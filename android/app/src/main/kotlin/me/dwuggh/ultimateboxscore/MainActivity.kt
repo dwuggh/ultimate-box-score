@@ -1,4 +1,4 @@
-package com.example.ultimate_box_score
+package me.dwuggh.ultimateboxscore
 
 import io.flutter.embedding.android.FlutterActivity
 
