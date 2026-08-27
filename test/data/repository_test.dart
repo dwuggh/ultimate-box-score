@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultimate_box_score/data/database.dart';
 import 'package:ultimate_box_score/data/repository.dart';
+import 'package:ultimate_box_score/domain/app_error.dart';
 import 'package:ultimate_box_score/domain/models.dart';
 
 void main() {
@@ -18,6 +19,33 @@ void main() {
   });
 
   tearDown(() => database.close());
+
+  test('migrates the legacy localized opponent placeholder', () async {
+    await database.close();
+    database = AppDatabase(
+      NativeDatabase.memory(
+        setup: (rawDatabase) {
+          rawDatabase
+            ..execute(
+              'CREATE TABLE game_entries ('
+              'opponent_name TEXT NOT NULL'
+              ')',
+            )
+            ..execute(
+              "INSERT INTO game_entries (opponent_name) "
+              "VALUES ('未命名对手')",
+            )
+            ..execute('PRAGMA user_version = 2');
+        },
+      ),
+    );
+
+    final row = await database
+        .customSelect('SELECT opponent_name FROM game_entries')
+        .getSingle();
+
+    expect(row.read<String>('opponent_name'), isEmpty);
+  });
 
   Future<({String teamId, String eventId, String gameId, String a, String b})>
   createFixture({int? maxPoints}) async {
@@ -139,7 +167,16 @@ void main() {
       ),
     );
 
-    expect(() => games.startGame(second), throwsA(isA<StateError>()));
+    expect(
+      () => games.startGame(second),
+      throwsA(
+        isA<AppException>().having(
+          (error) => error.code,
+          'code',
+          AppErrorCode.anotherGameActive,
+        ),
+      ),
+    );
   });
 
   test('team totals include completed games and undo is auditable', () async {
@@ -168,6 +205,26 @@ void main() {
     expect(bundle.state.ourScore, 0);
     expect(bundle.actions.last.voided, isTrue);
     expect(await games.getTeamStats(fixture.teamId), isEmpty);
+  });
+
+  test('pickup holder can score and complete a target-score game', () async {
+    final fixture = await createFixture(maxPoints: 1);
+    final (participantA, _) = await startPoint(
+      fixture.gameId,
+      fixture.a,
+      fixture.b,
+    );
+
+    await games.recordPickup(fixture.gameId, participantA);
+    await games.confirmHolderGoal(fixture.gameId);
+
+    final bundle = await games.getGameBundle(fixture.gameId);
+    expect(bundle.game.status, GameStatus.completed);
+    expect(bundle.state.ourScore, 1);
+    expect(bundle.state.stats[fixture.a]?.touches, 1);
+    expect(bundle.state.stats[fixture.a]?.goals, 1);
+    expect(bundle.state.stats[fixture.a]?.catches ?? 0, 0);
+    expect(bundle.state.stats[fixture.a]?.assists ?? 0, 0);
   });
 
   test('manual completion can restore an abandoned point on reopen', () async {

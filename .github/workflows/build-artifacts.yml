@@ -35,6 +35,7 @@ jobs:
 
       - name: Verify generated sources
         run: |
+          flutter gen-l10n
           dart run build_runner build
           git diff --exit-code
 

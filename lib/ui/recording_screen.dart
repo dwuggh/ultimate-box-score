@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../domain/app_error.dart';
 import '../domain/models.dart';
 import '../domain/recording.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import 'common.dart';
 
@@ -14,6 +16,7 @@ class StatsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     final gamesValue = ref.watch(gamesProvider);
     final events =
         ref.watch(eventsProvider).valueOrNull ?? const <CompetitionEvent>[];
@@ -28,7 +31,7 @@ class StatsScreen extends ConsumerWidget {
         return Scaffold(
           appBar: AppBar(
             title: games.isEmpty
-                ? const Text('统计')
+                ? Text(strings.stats)
                 : DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: selectedGame?.id,
@@ -38,8 +41,11 @@ class StatsScreen extends ConsumerWidget {
                           DropdownMenuItem(
                             value: game.id,
                             child: Text(
-                              '${eventNames[game.eventId] ?? '活动'} · '
-                              '${game.teamName} vs ${game.opponentName}',
+                              strings.gameOptionLabel(
+                                eventNames[game.eventId] ?? strings.event,
+                                game.teamName,
+                                opponentLabel(strings, game.opponentName),
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -51,9 +57,9 @@ class StatsScreen extends ConsumerWidget {
             actions: const [ExportAllButton()],
           ),
           body: selectedGame == null
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.query_stats_outlined,
-                  message: '还没有可显示的比赛。请先在“比赛”页创建活动和比赛。',
+                  message: strings.noGames,
                 )
               : _SelectedGameView(gameId: selectedGame.id),
         );
@@ -103,6 +109,7 @@ class _DraftGameView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     return ref
         .watch(eventBundleProvider(bundle.game.eventId))
         .when(
@@ -113,7 +120,10 @@ class _DraftGameView extends ConsumerWidget {
             children: [
               _ScoreCard(bundle: bundle),
               const SizedBox(height: 16),
-              Text('赛前阵容', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                strings.eventRoster,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               Card(
                 child: Padding(
@@ -129,10 +139,13 @@ class _DraftGameView extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('快捷阵线', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                strings.quickLines,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
               if (event.lines.isEmpty)
-                const Text('未设置快捷阵线。')
+                Text(strings.noConfiguredLines)
               else
                 Wrap(
                   spacing: 8,
@@ -140,7 +153,10 @@ class _DraftGameView extends ConsumerWidget {
                     for (final line in event.lines)
                       Chip(
                         label: Text(
-                          '${line.name} · ${line.memberPlayerIds.length}人',
+                          strings.linePlayerCount(
+                            line.name,
+                            line.memberPlayerIds.length,
+                          ),
                         ),
                       ),
                   ],
@@ -157,21 +173,21 @@ class _DraftGameView extends ConsumerWidget {
                   }
                 },
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('开始比赛'),
+                label: Text(strings.startGame),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () =>
                     context.go('/games/game/${bundle.game.id}/edit'),
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('编辑比赛设置'),
+                label: Text(strings.editGameSettings),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () =>
                     runExport(context, ref, ExportScope.game(bundle.game.id)),
                 icon: const Icon(Icons.ios_share),
-                label: const Text('导出比赛数据'),
+                label: Text(strings.exportGameData),
               ),
             ],
           ),
@@ -197,7 +213,10 @@ class _CompletedGameView extends ConsumerWidget {
           .getGameBundle(bundle.game.id);
       if (updated.game.maxPoints != null && leader >= updated.game.maxPoints!) {
         if (context.mounted) {
-          showError(context, StateError('继续比赛前，目标分必须高于当前比分'));
+          showError(
+            context,
+            const AppException(AppErrorCode.targetMustExceedScore),
+          );
         }
         return;
       }
@@ -211,6 +230,7 @@ class _CompletedGameView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -223,30 +243,36 @@ class _CompletedGameView extends ConsumerWidget {
             FilledButton.icon(
               onPressed: () => _reopen(context, ref),
               icon: const Icon(Icons.restart_alt),
-              label: const Text('重新打开'),
+              label: Text(strings.reopen),
             ),
             OutlinedButton.icon(
               onPressed: () => showMutableGameEditor(context, ref, bundle.game),
               icon: const Icon(Icons.tune),
-              label: const Text('调整比赛设置'),
+              label: Text(strings.adjustGameSettings),
             ),
             OutlinedButton.icon(
               onPressed: () =>
                   runExport(context, ref, ExportScope.game(bundle.game.id)),
               icon: const Icon(Icons.ios_share),
-              label: const Text('导出'),
+              label: Text(strings.exportData),
             ),
           ],
         ),
         const SizedBox(height: 24),
-        Text('球员统计', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          strings.playerStats,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
         StatsTable(
           stats: bundle.state.stats,
-          nameForId: (id) => _statsName(bundle, id),
+          nameForId: (id) => _statsName(strings, bundle, id),
         ),
         const SizedBox(height: 24),
-        Text('逐分事件', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          strings.pointEvents,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
         SizedBox(height: 520, child: _TimelinePanel(bundle: bundle)),
       ],
@@ -296,14 +322,25 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
   }
 
   void _scheduleCapCheck(GameBundle bundle) {
+    final strings = AppLocalizations.of(context);
     final startedAt = bundle.game.startedAt;
     if (startedAt == null) return;
     final elapsed = DateTime.now().difference(startedAt).inMinutes;
     final checks = [
       if (bundle.game.softCapMinutes case final minutes?)
-        ('soft', minutes, bundle.game.softCapAcknowledged, '已到软封顶时间'),
+        (
+          'soft',
+          minutes,
+          bundle.game.softCapAcknowledged,
+          strings.softCapReached,
+        ),
       if (bundle.game.totalCapMinutes case final minutes?)
-        ('total', minutes, bundle.game.totalCapAcknowledged, '已到总封顶时间'),
+        (
+          'total',
+          minutes,
+          bundle.game.totalCapAcknowledged,
+          strings.totalCapReached,
+        ),
     ];
     for (final check in checks) {
       if (elapsed < check.$2 || check.$3 || _shownCaps.contains(check.$1)) {
@@ -316,11 +353,11 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
           context: context,
           builder: (context) => AlertDialog(
             title: Text(check.$4),
-            content: Text('比赛已经进行 ${check.$2} 分钟。'),
+            content: Text(strings.gameElapsed(check.$2)),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('知道了'),
+                child: Text(strings.acknowledge),
               ),
             ],
           ),
@@ -337,18 +374,19 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
   }
 
   Future<GenderRatio?> _chooseFirstRatio() {
+    final strings = AppLocalizations.of(context);
     return showDialog<GenderRatio>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('选择首分性别比例 A'),
+        title: Text(strings.chooseFirstRatio),
         children: [
           SimpleDialogOption(
             onPressed: () => Navigator.pop(context, GenderRatio.fourMale),
-            child: const Text('4男 / 3女'),
+            child: Text(strings.ratioFourMale),
           ),
           SimpleDialogOption(
             onPressed: () => Navigator.pop(context, GenderRatio.fourFemale),
-            child: const Text('3男 / 4女'),
+            child: Text(strings.ratioFourFemale),
           ),
         ],
       ),
@@ -356,6 +394,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
   }
 
   Future<void> _startPoint(GameBundle bundle) async {
+    final strings = AppLocalizations.of(context);
     final selected = bundle.roster
         .where((player) => _selectedRosterIds.contains(player.id))
         .toList();
@@ -382,9 +421,11 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
     if (warnings.isNotEmpty) {
       final confirmed = await confirmDialog(
         context,
-        title: '阵容提示',
-        message: '${warnings.join('\n')}\n\n仍要开始本分吗？',
-        confirmLabel: '仍然开始',
+        title: strings.lineupWarningTitle,
+        message: strings.lineupWarningPrompt(
+          warnings.map(strings.lineupWarningLabel).join('\n'),
+        ),
+        confirmLabel: strings.startAnyway,
       );
       if (!confirmed) return;
     }
@@ -397,6 +438,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
   }
 
   void _applyLine(GameBundle bundle, LinePreset line) {
+    final strings = AppLocalizations.of(context);
     final byPlayerId = {
       for (final player in bundle.roster) player.playerId: player,
     };
@@ -417,19 +459,20 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
     });
     if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${missing.length} 名阵线成员不在本场比赛快照中，已忽略。')),
+        SnackBar(content: Text(strings.missingLinePlayers(missing.length))),
       );
     }
   }
 
   Future<void> _finish(GameBundle bundle) async {
+    final strings = AppLocalizations.of(context);
     final confirmed = await confirmDialog(
       context,
-      title: '结束比赛',
+      title: strings.finishGame,
       message: bundle.state.pointInProgress
-          ? '当前分将标记为中止，已经记录的事件和上场分会保留。'
-          : '比赛结束后将计入队伍累计统计。',
-      confirmLabel: '结束比赛',
+          ? strings.finishCurrentPointMessage
+          : strings.finishCompletedPointMessage,
+      confirmLabel: strings.finishGame,
     );
     if (confirmed) {
       await _run(
@@ -440,6 +483,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     final bundleValue = ref.watch(
       gameBundleProvider(widget.initialBundle.game.id),
     );
@@ -458,7 +502,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                 child: Row(
                   children: [
                     IconButton(
-                      tooltip: '撤销上一步',
+                      tooltip: strings.undo,
                       onPressed:
                           _busy ||
                               !bundle.actions.any((action) => !action.voided)
@@ -471,7 +515,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                       icon: const Icon(Icons.undo),
                     ),
                     IconButton(
-                      tooltip: '调整比赛设置',
+                      tooltip: strings.adjustGameSettings,
                       onPressed: _busy
                           ? null
                           : () => showMutableGameEditor(
@@ -482,7 +526,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                       icon: const Icon(Icons.tune),
                     ),
                     IconButton(
-                      tooltip: '导出比赛',
+                      tooltip: strings.exportGameData,
                       onPressed: _busy
                           ? null
                           : () => runExport(
@@ -496,7 +540,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                     TextButton.icon(
                       onPressed: _busy ? null : () => _finish(bundle),
                       icon: const Icon(Icons.stop_circle_outlined),
-                      label: const Text('结束'),
+                      label: Text(strings.finish),
                     ),
                   ],
                 ),
@@ -545,6 +589,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
   }
 
   Widget _lineupView(GameBundle bundle) {
+    final strings = AppLocalizations.of(context);
     final ratio = bundle.game.firstRatio == null
         ? null
         : RecordingRules.requiredRatio(
@@ -561,20 +606,22 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '第 ${bundle.state.nextPointNumber} 分 · '
-                    '${modeLabel(bundle.state.nextPointMode)}',
+                    strings.pointModeTitle(
+                      bundle.state.nextPointNumber,
+                      strings.modeLabel(bundle.state.nextPointMode),
+                    ),
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   if (bundle.game.isMixed)
                     Text(
                       ratio == null
-                          ? '首分比例将由阵容推断'
-                          : 'ABBA：${ratioLabel(ratio)}',
+                          ? strings.inferFirstRatio
+                          : strings.abbaRatio(strings.ratioLabel(ratio)),
                     ),
                 ],
               ),
             ),
-            Text('已选 ${_selectedRosterIds.length}/7'),
+            Text(strings.selectedPlayers(_selectedRosterIds.length)),
           ],
         ),
         if (bundle.lines.isNotEmpty) ...[
@@ -586,7 +633,12 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
               for (final line in bundle.lines)
                 ActionChip(
                   avatar: const Icon(Icons.bolt, size: 18),
-                  label: Text('${line.name} (${line.memberPlayerIds.length})'),
+                  label: Text(
+                    strings.linePlayerCount(
+                      line.name,
+                      line.memberPlayerIds.length,
+                    ),
+                  ),
                   onPressed: _busy ? null : () => _applyLine(bundle, line),
                 ),
             ],
@@ -596,9 +648,10 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
         for (final player in bundle.roster)
           CheckboxListTile(
             value: _selectedRosterIds.contains(player.id),
-            title: Text(playerLabel(player)),
+            title: Text(playerLabel(strings, player)),
             subtitle: Text(
-              '${genderLabel(player.gender)} · ${positionLabel(player.position)}',
+              '${strings.genderLabel(player.gender)} · '
+              '${strings.positionLabel(player.position)}',
             ),
             onChanged: _busy
                 ? null
@@ -614,7 +667,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
         FilledButton.icon(
           onPressed: _busy ? null : () => _startPoint(bundle),
           icon: const Icon(Icons.play_arrow),
-          label: const Text('开始本分'),
+          label: Text(strings.startPoint),
         ),
         if (!bundle.state.halftimeTaken) ...[
           const SizedBox(height: 8),
@@ -627,7 +680,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                         .startHalftime(bundle.game.id),
                   ),
             icon: const Icon(Icons.pause_circle_outline),
-            label: const Text('进入中场'),
+            label: Text(strings.halftime),
           ),
         ],
       ],
@@ -635,6 +688,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
   }
 
   Widget _halftimeView(GameBundle bundle) {
+    final strings = AppLocalizations.of(context);
     return Center(
       child: FilledButton.icon(
         onPressed: _busy
@@ -645,20 +699,21 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                     .endHalftime(bundle.game.id),
               ),
         icon: const Icon(Icons.play_arrow),
-        label: const Text('结束中场'),
+        label: Text(strings.endHalftime),
       ),
     );
   }
 
   Widget _participantView(GameBundle bundle) {
+    final strings = AppLocalizations.of(context);
     final state = bundle.state;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text(switch (state.stage) {
-          RecordingStage.awaitingPickup => '选择捡盘球员',
-          RecordingStage.offense => '本队进攻',
-          RecordingStage.defense => '本队防守',
+          RecordingStage.awaitingPickup => strings.selectPickupPlayer,
+          RecordingStage.offense => strings.ourOffense,
+          RecordingStage.defense => strings.ourDefense,
           _ => '',
         }, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 12),
@@ -682,7 +737,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                         .recordOpponentThrowaway(bundle.game.id),
                   ),
             icon: const Icon(Icons.swap_horiz),
-            label: const Text('对手传盘失误'),
+            label: Text(strings.opponentThrowaway),
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
@@ -697,7 +752,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                         .recordOpponentGoal(bundle.game.id),
                   ),
             icon: const Icon(Icons.flag),
-            label: const Text('对手得分'),
+            label: Text(strings.opponentGoal),
           ),
         ],
       ],
@@ -720,6 +775,7 @@ class _ParticipantCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     final state = bundle.state;
     final holder = state.holderParticipantId == participantId;
     final repository = ref.read(gameRepositoryProvider);
@@ -734,11 +790,11 @@ class _ParticipantCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    participantLabel(bundle, participantId),
+                    participantLabel(strings, bundle, participantId),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
-                if (holder) const Chip(label: Text('持盘')),
+                if (holder) Chip(label: Text(strings.holder)),
               ],
             ),
             const SizedBox(height: 8),
@@ -756,7 +812,7 @@ class _ParticipantCard extends ConsumerWidget {
                               participantId,
                             ),
                           ),
-                    child: const Text('捡盘'),
+                    child: Text(strings.pickup),
                   ),
                 ],
                 RecordingStage.offense when holder => [
@@ -767,15 +823,15 @@ class _ParticipantCard extends ConsumerWidget {
                             () =>
                                 repository.recordPasserTurnover(bundle.game.id),
                           ),
-                    child: const Text('传盘失误'),
+                    child: Text(strings.passerTurnover),
                   ),
                   FilledButton(
-                    onPressed: busy || !state.canConfirmGoal
+                    onPressed: busy
                         ? null
                         : () => run(
                             () => repository.confirmHolderGoal(bundle.game.id),
                           ),
-                    child: const Text('得分'),
+                    child: Text(strings.goal),
                   ),
                 ],
                 RecordingStage.offense => [
@@ -788,7 +844,7 @@ class _ParticipantCard extends ConsumerWidget {
                               participantId,
                             ),
                           ),
-                    child: const Text('接盘'),
+                    child: Text(strings.catchAction),
                   ),
                   OutlinedButton(
                     onPressed: busy
@@ -799,7 +855,7 @@ class _ParticipantCard extends ConsumerWidget {
                               participantId,
                             ),
                           ),
-                    child: const Text('接盘失误'),
+                    child: Text(strings.receiverDrop),
                   ),
                   FilledButton(
                     onPressed: busy
@@ -810,7 +866,7 @@ class _ParticipantCard extends ConsumerWidget {
                               participantId,
                             ),
                           ),
-                    child: const Text('接盘得分'),
+                    child: Text(strings.catchGoal),
                   ),
                 ],
                 RecordingStage.defense => [
@@ -823,7 +879,7 @@ class _ParticipantCard extends ConsumerWidget {
                               participantId,
                             ),
                           ),
-                    child: const Text('防守成功 D'),
+                    child: Text(strings.defensiveBlock),
                   ),
                 ],
                 _ => const <Widget>[],
@@ -843,6 +899,7 @@ class _ScoreHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     final elapsed = bundle.game.startedAt == null
         ? Duration.zero
         : DateTime.now().difference(bundle.game.startedAt!);
@@ -866,7 +923,7 @@ class _ScoreHeader extends StatelessWidget {
               children: [
                 Text(time, style: Theme.of(context).textTheme.labelLarge),
                 Text(
-                  modeLabel(
+                  strings.modeLabel(
                     bundle.state.currentMode ?? bundle.state.nextPointMode,
                   ),
                 ),
@@ -874,7 +931,8 @@ class _ScoreHeader extends StatelessWidget {
             ),
             Expanded(
               child: Text(
-                '${bundle.state.opponentScore}  ${bundle.game.opponentName}',
+                '${bundle.state.opponentScore}  '
+                '${opponentLabel(strings, bundle.game.opponentName)}',
                 textAlign: TextAlign.end,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
@@ -893,6 +951,7 @@ class _ScoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -902,9 +961,14 @@ class _ScoreCard extends StatelessWidget {
               '${bundle.state.ourScore}  :  ${bundle.state.opponentScore}',
               style: Theme.of(context).textTheme.displayMedium,
             ),
-            Text('${bundle.game.teamName}  vs  ${bundle.game.opponentName}'),
+            Text(
+              strings.versusLabel(
+                bundle.game.teamName,
+                opponentLabel(strings, bundle.game.opponentName),
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(gameStatusLabel(bundle.game.status)),
+            Text(strings.gameStatusLabel(bundle.game.status)),
           ],
         ),
       ),
@@ -919,6 +983,7 @@ class _RecentActionStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     final active = bundle.actions.where((action) => !action.voided).toList();
     final latest = active.isEmpty ? null : active.last;
     return Material(
@@ -926,7 +991,11 @@ class _RecentActionStrip extends StatelessWidget {
       child: ListTile(
         dense: true,
         leading: const Icon(Icons.timeline),
-        title: Text(latest == null ? '还没有事件' : _actionLabel(bundle, latest)),
+        title: Text(
+          latest == null
+              ? strings.noEventsRecorded
+              : _actionLabel(strings, bundle, latest),
+        ),
         trailing: const Icon(Icons.expand_less),
         onTap: () => showModalBottomSheet<void>(
           context: context,
@@ -949,8 +1018,12 @@ class _TimelinePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     if (bundle.actions.isEmpty) {
-      return const EmptyState(icon: Icons.timeline, message: '还没有事件。');
+      return EmptyState(
+        icon: Icons.timeline,
+        message: strings.noEventsRecordedPeriod,
+      );
     }
     final gameActions = bundle.actions.where(
       (action) => action.pointId == null,
@@ -963,9 +1036,14 @@ class _TimelinePanel extends StatelessWidget {
         for (final point in bundle.points)
           ExpansionTile(
             initiallyExpanded: point.id == bundle.state.currentPointId,
-            title: Text('第 ${point.number} 分'),
+            title: Text(strings.pointNumber(point.number)),
             subtitle: Text(
-              '${bundle.participantsForPoint(point.id).where((item) => !item.unknown).length} 人',
+              strings.peopleCount(
+                bundle
+                    .participantsForPoint(point.id)
+                    .where((item) => !item.unknown)
+                    .length,
+              ),
             ),
             children: [
               for (final action in bundle.actions.where(
@@ -987,6 +1065,7 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     final startedAt = bundle.game.startedAt;
     final elapsed = startedAt == null
         ? Duration.zero
@@ -998,33 +1077,43 @@ class _ActionTile extends StatelessWidget {
       dense: true,
       leading: Text(time),
       title: Text(
-        _actionLabel(bundle, action),
+        _actionLabel(strings, bundle, action),
         style: action.voided
             ? const TextStyle(decoration: TextDecoration.lineThrough)
             : null,
       ),
-      subtitle: action.voided ? const Text('已撤销') : null,
+      subtitle: action.voided ? Text(strings.voided) : null,
     );
   }
 }
 
-String _actionLabel(GameBundle bundle, RecordedAction action) {
-  final actor = participantLabel(bundle, action.actorParticipantId);
-  final target = participantLabel(bundle, action.targetParticipantId);
+String _actionLabel(
+  AppLocalizations strings,
+  GameBundle bundle,
+  RecordedAction action,
+) {
+  final actor = participantLabel(strings, bundle, action.actorParticipantId);
+  final target = participantLabel(strings, bundle, action.targetParticipantId);
   return switch (action.kind) {
-    RecordedActionKind.startPoint => '开始本分',
-    RecordedActionKind.startHalftime => '进入中场',
-    RecordedActionKind.endHalftime => '结束中场',
-    RecordedActionKind.pickup => '$actor 捡盘',
-    RecordedActionKind.completedPass => '$actor → $target 接盘',
-    RecordedActionKind.receiverDrop => '$actor → $target 接盘失误',
-    RecordedActionKind.passerTurnover => '$actor 传盘失误',
-    RecordedActionKind.goalCatch => '$actor → $target 得分',
-    RecordedActionKind.confirmGoal => '$actor 确认为得分',
-    RecordedActionKind.defensiveBlock => '$actor 防守成功 D',
-    RecordedActionKind.opponentThrowaway => '对手传盘失误',
-    RecordedActionKind.opponentGoal => '对手得分',
-    RecordedActionKind.abandonPoint => '本分中止',
+    RecordedActionKind.startPoint => strings.actionStartPoint,
+    RecordedActionKind.startHalftime => strings.actionStartHalftime,
+    RecordedActionKind.endHalftime => strings.actionEndHalftime,
+    RecordedActionKind.pickup => strings.actionPickup(actor),
+    RecordedActionKind.completedPass => strings.actionCompletedPass(
+      actor,
+      target,
+    ),
+    RecordedActionKind.receiverDrop => strings.actionReceiverDrop(
+      actor,
+      target,
+    ),
+    RecordedActionKind.passerTurnover => strings.actionPasserTurnover(actor),
+    RecordedActionKind.goalCatch => strings.actionGoalCatch(actor, target),
+    RecordedActionKind.confirmGoal => strings.actionConfirmGoal(actor),
+    RecordedActionKind.defensiveBlock => strings.actionDefensiveBlock(actor),
+    RecordedActionKind.opponentThrowaway => strings.opponentThrowaway,
+    RecordedActionKind.opponentGoal => strings.opponentGoal,
+    RecordedActionKind.abandonPoint => strings.actionAbandonPoint,
   };
 }
 
@@ -1033,6 +1122,7 @@ Future<bool> showMutableGameEditor(
   WidgetRef ref,
   Game game,
 ) async {
+  final strings = AppLocalizations.of(context);
   final opponent = TextEditingController(text: game.opponentName);
   final soft = TextEditingController(text: '${game.softCapMinutes ?? ''}');
   final total = TextEditingController(text: '${game.totalCapMinutes ?? ''}');
@@ -1041,14 +1131,14 @@ Future<bool> showMutableGameEditor(
     final text = controller.text.trim();
     if (text.isEmpty) return null;
     final value = int.tryParse(text);
-    if (value == null || value <= 0) throw const FormatException('请输入正整数');
+    if (value == null || value <= 0) throw const FormatException();
     return value;
   }
 
   final saved = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('调整比赛设置'),
+      title: Text(strings.adjustGameSettings),
       content: SizedBox(
         width: 460,
         child: Column(
@@ -1056,25 +1146,31 @@ Future<bool> showMutableGameEditor(
           children: [
             TextField(
               controller: opponent,
-              decoration: const InputDecoration(labelText: '对手名称'),
+              decoration: InputDecoration(labelText: strings.opponentName),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: soft,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: '软封顶分钟（可选）'),
+              decoration: InputDecoration(
+                labelText: strings.optionalField(strings.softCapMinutes),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: total,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: '总封顶分钟（可选）'),
+              decoration: InputDecoration(
+                labelText: strings.optionalField(strings.totalCapMinutes),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: target,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: '目标分（可选）'),
+              decoration: InputDecoration(
+                labelText: strings.optionalField(strings.targetScore),
+              ),
             ),
           ],
         ),
@@ -1082,11 +1178,11 @@ Future<bool> showMutableGameEditor(
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('取消'),
+          child: Text(strings.cancel),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('保存'),
+          child: Text(strings.save),
         ),
       ],
     ),
@@ -1106,7 +1202,15 @@ Future<bool> showMutableGameEditor(
     }
     return false;
   } catch (error) {
-    if (context.mounted) showError(context, error);
+    if (context.mounted) {
+      if (error is FormatException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.positiveIntegerRequired)),
+        );
+      } else {
+        showError(context, error);
+      }
+    }
     return false;
   } finally {
     opponent.dispose();
@@ -1116,12 +1220,12 @@ Future<bool> showMutableGameEditor(
   }
 }
 
-String _statsName(GameBundle bundle, String id) {
-  if (id == 'unknown') return '未知球员';
+String _statsName(AppLocalizations strings, GameBundle bundle, String id) {
+  if (id == 'unknown') return strings.unknownPlayer;
   for (final player in bundle.roster) {
-    if (player.playerId == id) return playerLabel(player);
+    if (player.playerId == id) return playerLabel(strings, player);
   }
-  return '已归档球员';
+  return strings.archivedPlayer;
 }
 
 String _playerName(Player player) {

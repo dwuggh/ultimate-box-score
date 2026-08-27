@@ -62,10 +62,11 @@ retains it for audit and export; counters are never an independent source of
 truth.
 
 The recording UI never moves the holder out of the ordered player list. The
-holder row shows throwaway and, when the holder arrived via a recorded catch,
-goal confirmation. Other offensive rows show catch, receiver drop, and catch
-goal. Defense rows show D, while opponent throwaway and opponent goal are global
-actions.
+holder row shows throwaway and goal confirmation. A goal immediately after
+pickup credits the holder with a goal and the pickup touch, but no catch or
+assist. A goal after a recorded catch also credits the related passer with the
+assist. Other offensive rows show catch, receiver drop, and catch goal. Defense
+rows show D, while opponent throwaway and opponent goal are global actions.
 
 ## Export
 
@@ -79,5 +80,6 @@ of scope.
 ## Compatibility
 
 This redesign intentionally has no database compatibility guarantee. Opening an
-older schema recreates the local database. The application remains offline,
-single-team focused, and Chinese-first.
+older schema recreates the local database. The application remains offline and
+single-team focused. All user-facing text is available in English and Simplified
+Chinese, selected from the device locale, with English as the fallback.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/models.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import 'common.dart';
 import 'home_screen.dart';
@@ -19,13 +20,17 @@ class TeamScreen extends ConsumerWidget {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stack) => Scaffold(body: ErrorState(error)),
       data: (items) {
+        final strings = AppLocalizations.of(context);
         Team? team;
         for (final item in items) {
           if (item.id == teamId) team = item;
         }
         if (team == null) {
-          return const Scaffold(
-            body: EmptyState(icon: Icons.search_off, message: '队伍不存在。'),
+          return Scaffold(
+            body: EmptyState(
+              icon: Icons.search_off,
+              message: strings.teamNotFound,
+            ),
           );
         }
         return _TeamContent(team: team);
@@ -41,6 +46,7 @@ class _TeamContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -48,20 +54,22 @@ class _TeamContent extends ConsumerWidget {
           title: Text(team.name),
           actions: [
             IconButton(
-              tooltip: '导出队伍数据',
+              tooltip: strings.exportTeamData,
               onPressed: () =>
                   runExport(context, ref, ExportScope.team(team.id)),
               icon: const Icon(Icons.ios_share),
             ),
             IconButton(
-              tooltip: '编辑队伍',
+              tooltip: strings.editTeam,
               onPressed: team.archived
                   ? null
                   : () => showTeamEditor(context, ref, team: team),
               icon: const Icon(Icons.edit_outlined),
             ),
             IconButton(
-              tooltip: team.archived ? '恢复队伍' : '归档队伍',
+              tooltip: team.archived
+                  ? strings.restoreTeam
+                  : strings.archiveTeam,
               onPressed: () async {
                 try {
                   await ref
@@ -78,10 +86,13 @@ class _TeamContent extends ConsumerWidget {
               ),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.groups_outlined), text: '阵容'),
-              Tab(icon: Icon(Icons.query_stats), text: '累计统计'),
+              Tab(
+                icon: const Icon(Icons.groups_outlined),
+                text: strings.roster,
+              ),
+              Tab(icon: const Icon(Icons.query_stats), text: strings.teamStats),
             ],
           ),
         ),
@@ -103,6 +114,7 @@ class _RosterTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     return ref
         .watch(playersProvider(team.id))
         .when(
@@ -111,9 +123,9 @@ class _RosterTab extends ConsumerWidget {
           data: (players) => Stack(
             children: [
               if (players.isEmpty)
-                const EmptyState(
+                EmptyState(
                   icon: Icons.person_add_alt,
-                  message: '阵容为空，请添加球员。',
+                  message: strings.rosterEmpty,
                 )
               else
                 ListView.separated(
@@ -131,9 +143,9 @@ class _RosterTab extends ConsumerWidget {
                       ),
                       title: Text(player.name),
                       subtitle: Text(
-                        '${genderLabel(player.gender)} · '
-                        '${positionLabel(player.position)}'
-                        '${player.archived ? ' · 已归档' : ''}',
+                        '${strings.genderLabel(player.gender)} · '
+                        '${strings.positionLabel(player.position)}'
+                        '${player.archived ? ' · ${strings.archived}' : ''}',
                       ),
                       onTap: player.archived
                           ? null
@@ -144,7 +156,9 @@ class _RosterTab extends ConsumerWidget {
                               player: player,
                             ),
                       trailing: IconButton(
-                        tooltip: player.archived ? '恢复球员' : '归档球员',
+                        tooltip: player.archived
+                            ? strings.restorePlayer
+                            : strings.archivePlayer,
                         onPressed: () async {
                           await ref
                               .read(teamRepositoryProvider)
@@ -167,7 +181,7 @@ class _RosterTab extends ConsumerWidget {
                       ? null
                       : () => showPlayerEditor(context, ref, teamId: team.id),
                   icon: const Icon(Icons.person_add_alt),
-                  label: const Text('添加球员'),
+                  label: Text(strings.addPlayer),
                 ),
               ),
             ],
@@ -183,6 +197,7 @@ class _TeamStatsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     final players = ref.watch(playersProvider(teamId));
     final stats = ref.watch(teamStatsProvider(teamId));
     return players.when(
@@ -197,8 +212,9 @@ class _TeamStatsTab extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: StatsTable(
               stats: values,
-              nameForId: (id) =>
-                  id == 'unknown' ? '未知球员' : names[id] ?? '已归档球员',
+              nameForId: (id) => id == 'unknown'
+                  ? strings.unknownPlayer
+                  : names[id] ?? strings.archivedPlayer,
             ),
           );
         },
@@ -213,6 +229,7 @@ Future<void> showPlayerEditor(
   required String teamId,
   Player? player,
 }) async {
+  final strings = AppLocalizations.of(context);
   final nameController = TextEditingController(text: player?.name);
   final numberController = TextEditingController(text: player?.number);
   var gender = player?.gender ?? PlayerGender.male;
@@ -221,7 +238,7 @@ Future<void> showPlayerEditor(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: Text(player == null ? '添加球员' : '编辑球员'),
+        title: Text(player == null ? strings.addPlayer : strings.editPlayer),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -229,22 +246,24 @@ Future<void> showPlayerEditor(
               TextField(
                 controller: nameController,
                 autofocus: true,
-                decoration: const InputDecoration(labelText: '姓名'),
+                decoration: InputDecoration(labelText: strings.playerName),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: numberController,
-                decoration: const InputDecoration(labelText: '号码（可选）'),
+                decoration: InputDecoration(
+                  labelText: strings.playerNumberOptional,
+                ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<PlayerGender>(
                 initialValue: gender,
-                decoration: const InputDecoration(labelText: '性别'),
+                decoration: InputDecoration(labelText: strings.gender),
                 items: [
                   for (final value in PlayerGender.values)
                     DropdownMenuItem(
                       value: value,
-                      child: Text(genderLabel(value)),
+                      child: Text(strings.genderLabel(value)),
                     ),
                 ],
                 onChanged: (value) {
@@ -254,12 +273,12 @@ Future<void> showPlayerEditor(
               const SizedBox(height: 12),
               DropdownButtonFormField<PlayerPosition>(
                 initialValue: position,
-                decoration: const InputDecoration(labelText: '位置'),
+                decoration: InputDecoration(labelText: strings.position),
                 items: [
                   for (final value in PlayerPosition.values)
                     DropdownMenuItem(
                       value: value,
-                      child: Text(positionLabel(value)),
+                      child: Text(strings.positionLabel(value)),
                     ),
                 ],
                 onChanged: (value) {
@@ -272,11 +291,11 @@ Future<void> showPlayerEditor(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('保存'),
+            child: Text(strings.save),
           ),
         ],
       ),

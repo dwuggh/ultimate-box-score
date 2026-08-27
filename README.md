@@ -1,7 +1,7 @@
 # Ultimate Box Score
 
 Offline ultimate frisbee box score recording for Android and Linux desktop in
-Simplified Chinese.
+English and Simplified Chinese, selected from the device locale.
 
 ## Features
 

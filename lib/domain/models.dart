@@ -352,11 +352,6 @@ class RecordingState {
     RecordingStage.betweenPoints || RecordingStage.halftime => false,
   };
 
-  bool get canConfirmGoal =>
-      stage == RecordingStage.offense &&
-      holderParticipantId != null &&
-      lastCatchActionId != null;
-
   int get nextPointNumber => completedPoints + 1;
 }
 

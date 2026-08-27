@@ -23,26 +23,35 @@ void main() {
   testWidgets('keeps the three-page dock visible while switching pages', (
     tester,
   ) async {
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('en')];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('队伍'), findsWidgets);
-    expect(find.text('比赛'), findsOneWidget);
-    expect(find.text('统计'), findsOneWidget);
+    expect(find.text('Teams'), findsWidgets);
+    expect(find.text('Games'), findsOneWidget);
+    expect(find.text('Stats'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.event_note_outlined));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('还没有活动。先创建活动，再配置阵容、阵线和比赛。'), findsOneWidget);
+    expect(
+      find.text(
+        'No events yet. Create an event, then configure its roster, lines, and games.',
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byIcon(Icons.query_stats_outlined));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('还没有可显示的比赛。请先在“比赛”页创建活动和比赛。'), findsOneWidget);
+    expect(find.text('No games yet.'), findsOneWidget);
   });
 
   testWidgets('opens the team creation flow', (tester) async {
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
@@ -52,5 +61,18 @@ void main() {
     expect(find.text('队伍名称'), findsOneWidget);
     expect(find.text('混合组'), findsOneWidget);
     expect(find.text('单一性别组'), findsOneWidget);
+  });
+
+  testWidgets('falls back to English for unsupported device locales', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('fr')];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Teams'), findsWidgets);
+    expect(find.text('Add team'), findsOneWidget);
   });
 }

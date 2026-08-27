@@ -25,14 +25,14 @@ class RecordingRules {
         : GenderRatio.fourMale;
   }
 
-  static List<String> lineupWarnings({
+  static List<LineupWarning> lineupWarnings({
     required Iterable<GamePlayerSnapshot> lineup,
     GenderRatio? requiredRatio,
   }) {
     final selected = lineup.toList();
-    final warnings = <String>[];
+    final warnings = <LineupWarning>[];
     if (selected.length != 7) {
-      warnings.add('当前阵容为 ${selected.length} 人，标准阵容为 7 人。');
+      warnings.add(LineupWarning.playerCount(selected.length));
     }
     if (requiredRatio == null) return warnings;
     final maleCount = selected
@@ -43,12 +43,42 @@ class RecordingRules {
     final expectedFemale = 7 - expectedMale;
     if (maleCount != expectedMale || femaleCount != expectedFemale) {
       warnings.add(
-        '当前性别比例为 $maleCount男/$femaleCount女，'
-        '本分提示比例为 $expectedMale男/$expectedFemale女。',
+        LineupWarning.genderRatio(
+          maleCount: maleCount,
+          femaleCount: femaleCount,
+          expectedMale: expectedMale,
+          expectedFemale: expectedFemale,
+        ),
       );
     }
     return warnings;
   }
+}
+
+enum LineupWarningKind { playerCount, genderRatio }
+
+final class LineupWarning {
+  const LineupWarning.playerCount(this.playerCount)
+    : kind = LineupWarningKind.playerCount,
+      maleCount = null,
+      femaleCount = null,
+      expectedMale = null,
+      expectedFemale = null;
+
+  const LineupWarning.genderRatio({
+    required this.maleCount,
+    required this.femaleCount,
+    required this.expectedMale,
+    required this.expectedFemale,
+  }) : kind = LineupWarningKind.genderRatio,
+       playerCount = null;
+
+  final LineupWarningKind kind;
+  final int? playerCount;
+  final int? maleCount;
+  final int? femaleCount;
+  final int? expectedMale;
+  final int? expectedFemale;
 }
 
 class RecordingReducer {

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../data/repository.dart';
 import '../domain/models.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import 'common.dart';
 
@@ -13,12 +14,13 @@ class EventListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     final events = ref.watch(eventsProvider);
     final teams = ref.watch(teamsProvider).valueOrNull ?? const <Team>[];
     final teamNames = {for (final team in teams) team.id: team.name};
     return Scaffold(
       appBar: AppBar(
-        title: const Text('活动与比赛'),
+        title: Text(strings.eventsAndGames),
         actions: const [ExportAllButton()],
       ),
       body: events.when(
@@ -26,9 +28,9 @@ class EventListScreen extends ConsumerWidget {
         error: (error, stack) => ErrorState(error),
         data: (items) {
           if (items.isEmpty) {
-            return const EmptyState(
+            return EmptyState(
               icon: Icons.event_note_outlined,
-              message: '还没有活动。先创建活动，再配置阵容、阵线和比赛。',
+              message: strings.noEvents,
             );
           }
           return ListView.separated(
@@ -37,7 +39,7 @@ class EventListScreen extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final event = items[index];
-              final dates = _dateRange(event.startDate, event.endDate);
+              final dates = _dateRange(strings, event.startDate, event.endDate);
               return Card(
                 child: ListTile(
                   leading: Icon(
@@ -46,9 +48,9 @@ class EventListScreen extends ConsumerWidget {
                   title: Text(event.name),
                   subtitle: Text(
                     [
-                      teamNames[event.teamId] ?? '未知队伍',
+                      teamNames[event.teamId] ?? strings.unknownTeam,
                       ?dates,
-                      if (event.archived) '已归档',
+                      if (event.archived) strings.archived,
                     ].join(' · '),
                   ),
                   trailing: const Icon(Icons.chevron_right),
@@ -62,7 +64,7 @@ class EventListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showEventEditor(context, ref),
         icon: const Icon(Icons.add),
-        label: const Text('新建活动'),
+        label: Text(strings.newEvent),
       ),
     );
   }
@@ -93,13 +95,14 @@ class _EventDetail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     final event = bundle.event;
     return Scaffold(
       appBar: AppBar(
         title: Text(event.name),
         actions: [
           IconButton(
-            tooltip: '导出活动数据',
+            tooltip: strings.exportEventData,
             onPressed: () =>
                 runExport(context, ref, ExportScope.event(event.id)),
             icon: const Icon(Icons.ios_share),
@@ -117,9 +120,9 @@ class _EventDetail extends ConsumerWidget {
                   case 'delete':
                     final confirmed = await confirmDialog(
                       context,
-                      title: '删除活动',
-                      message: '只有没有比赛的活动可以永久删除。',
-                      confirmLabel: '删除',
+                      title: strings.deleteEvent,
+                      message: strings.deleteEventMessage,
+                      confirmLabel: strings.delete,
                       destructive: true,
                     );
                     if (!confirmed) return;
@@ -133,12 +136,17 @@ class _EventDetail extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('编辑活动')),
+              PopupMenuItem(value: 'edit', child: Text(strings.editEvent)),
               PopupMenuItem(
                 value: 'archive',
-                child: Text(event.archived ? '恢复活动' : '归档活动'),
+                child: Text(
+                  event.archived ? strings.restoreEvent : strings.archiveEvent,
+                ),
               ),
-              const PopupMenuItem(value: 'delete', child: Text('永久删除')),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text(strings.permanentlyDelete),
+              ),
             ],
           ),
         ],
@@ -149,8 +157,8 @@ class _EventDetail extends ConsumerWidget {
           _EventSummary(bundle: bundle),
           const SizedBox(height: 20),
           _SectionHeader(
-            title: '活动阵容（${bundle.roster.length}）',
-            actionLabel: '管理',
+            title: strings.eventRosterCount(bundle.roster.length),
+            actionLabel: strings.manage,
             onPressed: event.archived
                 ? null
                 : () => showEventRosterEditor(context, ref, bundle),
@@ -160,7 +168,7 @@ class _EventDetail extends ConsumerWidget {
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: bundle.roster.isEmpty
-                  ? const Text('活动阵容为空。')
+                  ? Text(strings.eventRosterEmpty)
                   : Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -178,25 +186,27 @@ class _EventDetail extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _SectionHeader(
-            title: '快捷阵线',
-            actionLabel: '添加',
+            title: strings.quickLines,
+            actionLabel: strings.add,
             onPressed: event.archived
                 ? null
                 : () => showLineEditor(context, ref, bundle),
           ),
           const SizedBox(height: 8),
           if (bundle.lines.isEmpty)
-            const Card(child: ListTile(title: Text('还没有快捷阵线。')))
+            Card(child: ListTile(title: Text(strings.noQuickLines)))
           else
             for (final line in bundle.lines) ...[
               Card(
                 child: ListTile(
                   title: Text(line.name),
-                  subtitle: Text('${line.memberPlayerIds.length} 人'),
+                  subtitle: Text(
+                    strings.peopleCount(line.memberPlayerIds.length),
+                  ),
                   trailing: Wrap(
                     children: [
                       IconButton(
-                        tooltip: '编辑',
+                        tooltip: strings.edit,
                         onPressed: event.archived
                             ? null
                             : () => showLineEditor(
@@ -208,7 +218,7 @@ class _EventDetail extends ConsumerWidget {
                         icon: const Icon(Icons.edit_outlined),
                       ),
                       IconButton(
-                        tooltip: '删除',
+                        tooltip: strings.delete,
                         onPressed: event.archived
                             ? null
                             : () => ref
@@ -224,15 +234,15 @@ class _EventDetail extends ConsumerWidget {
             ],
           const SizedBox(height: 20),
           _SectionHeader(
-            title: '比赛',
-            actionLabel: '新建',
+            title: strings.games,
+            actionLabel: strings.newAction,
             onPressed: event.archived
                 ? null
                 : () => context.go('/games/event/${event.id}/game/new'),
           ),
           const SizedBox(height: 8),
           if (bundle.games.isEmpty)
-            const Card(child: ListTile(title: Text('还没有比赛。')))
+            Card(child: ListTile(title: Text(strings.noGames)))
           else
             for (final game in bundle.games) ...[
               _GameCard(game: game),
@@ -256,6 +266,7 @@ class _GameCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
@@ -272,24 +283,27 @@ class _GameCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${game.teamName} vs ${game.opponentName}',
+                    strings.versusLabel(
+                      game.teamName,
+                      opponentLabel(strings, game.opponentName),
+                    ),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    '${gameStatusLabel(game.status)} · '
-                    '${DateFormat('yyyy-MM-dd HH:mm').format(game.startedAt ?? game.createdAt)}',
+                    '${strings.gameStatusLabel(game.status)} · '
+                    '${DateFormat.yMd(strings.localeName).add_Hm().format(game.startedAt ?? game.createdAt)}',
                   ),
                 ],
               ),
             ),
             if (game.status == GameStatus.draft)
               IconButton(
-                tooltip: '编辑',
+                tooltip: strings.edit,
                 onPressed: () => context.go('/games/game/${game.id}/edit'),
                 icon: const Icon(Icons.edit_outlined),
               ),
             IconButton(
-              tooltip: '在统计页打开',
+              tooltip: strings.openInStats,
               onPressed: () => _openStats(context, ref),
               icon: const Icon(Icons.query_stats),
             ),
@@ -305,9 +319,9 @@ class _GameCard extends ConsumerWidget {
                 } else if (value == 'delete') {
                   final confirmed = await confirmDialog(
                     context,
-                    title: '删除比赛',
-                    message: '比赛、阵容快照和完整事件记录都将永久删除。',
-                    confirmLabel: '删除',
+                    title: strings.deleteGame,
+                    message: strings.deleteGameMessage,
+                    confirmLabel: strings.delete,
                     destructive: true,
                   );
                   if (confirmed) {
@@ -317,8 +331,8 @@ class _GameCard extends ConsumerWidget {
               },
               itemBuilder: (context) => [
                 if (game.status == GameStatus.draft)
-                  const PopupMenuItem(value: 'start', child: Text('开始比赛')),
-                const PopupMenuItem(value: 'delete', child: Text('删除比赛')),
+                  PopupMenuItem(value: 'start', child: Text(strings.startGame)),
+                PopupMenuItem(value: 'delete', child: Text(strings.deleteGame)),
               ],
             ),
           ],
@@ -361,7 +375,7 @@ class _GameEditorScreenState extends ConsumerState<GameEditorScreen> {
     final text = controller.text.trim();
     if (text.isEmpty) return null;
     final value = int.tryParse(text);
-    if (value == null || value <= 0) throw const FormatException('请输入正整数');
+    if (value == null || value <= 0) throw const FormatException();
     return value;
   }
 
@@ -395,7 +409,16 @@ class _GameEditorScreenState extends ConsumerState<GameEditorScreen> {
           );
       if (mounted) context.go('/games/event/$eventId');
     } catch (error) {
-      if (mounted) showError(context, error);
+      if (mounted) {
+        if (error is FormatException) {
+          final strings = AppLocalizations.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(strings.positiveIntegerRequired)),
+          );
+        } else {
+          showError(context, error);
+        }
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -403,6 +426,7 @@ class _GameEditorScreenState extends ConsumerState<GameEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     final games = ref.watch(gamesProvider).valueOrNull ?? const <Game>[];
     Game? existing;
     if (widget.gameId != null) {
@@ -412,35 +436,44 @@ class _GameEditorScreenState extends ConsumerState<GameEditorScreen> {
       if (existing == null && ref.watch(gamesProvider).isLoading) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      if (existing == null) return const Scaffold(body: ErrorState('比赛不存在'));
+      if (existing == null) {
+        return Scaffold(
+          body: EmptyState(
+            icon: Icons.search_off,
+            message: strings.gameNotFound,
+          ),
+        );
+      }
       _load(existing);
     }
     final eventId = widget.eventId ?? existing!.eventId;
     final eventBundle = ref.watch(eventBundleProvider(eventId));
     return Scaffold(
-      appBar: AppBar(title: Text(existing == null ? '新建比赛' : '编辑比赛')),
+      appBar: AppBar(
+        title: Text(existing == null ? strings.newGame : strings.editGame),
+      ),
       body: eventBundle.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => ErrorState(error),
         data: (event) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('活动：${event.event.name} · ${event.team.name}'),
+            Text(strings.eventTeamLabel(event.event.name, event.team.name)),
             const SizedBox(height: 16),
             TextField(
               controller: _opponent,
-              decoration: const InputDecoration(labelText: '对手名称'),
+              decoration: InputDecoration(labelText: strings.opponentName),
             ),
             const SizedBox(height: 16),
             SegmentedButton<PossessionMode>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: PossessionMode.offense,
-                  label: Text('首分进攻'),
+                  label: Text(strings.openingOffense),
                 ),
                 ButtonSegment(
                   value: PossessionMode.defense,
-                  label: Text('首分防守'),
+                  label: Text(strings.openingDefense),
                 ),
               ],
               selected: {_openingMode},
@@ -452,30 +485,39 @@ class _GameEditorScreenState extends ConsumerState<GameEditorScreen> {
             Row(
               children: [
                 Expanded(
-                  child: _NumberField(controller: _softCap, label: '软封顶（分钟）'),
+                  child: _NumberField(
+                    controller: _softCap,
+                    label: strings.softCapMinutes,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _NumberField(controller: _totalCap, label: '总封顶（分钟）'),
+                  child: _NumberField(
+                    controller: _totalCap,
+                    label: strings.totalCapMinutes,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            _NumberField(controller: _target, label: '目标分'),
+            _NumberField(controller: _target, label: strings.targetScore),
             if (event.team.type == TeamType.mixed) ...[
               const SizedBox(height: 16),
               DropdownButtonFormField<GenderRatio?>(
                 initialValue: _firstRatio,
-                decoration: const InputDecoration(labelText: '首分性别比例 A'),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('由首分阵容推断')),
+                decoration: InputDecoration(labelText: strings.firstPointRatio),
+                items: [
+                  DropdownMenuItem(
+                    value: null,
+                    child: Text(strings.inferFromFirstLineup),
+                  ),
                   DropdownMenuItem(
                     value: GenderRatio.fourMale,
-                    child: Text('4男 / 3女'),
+                    child: Text(strings.ratioFourMale),
                   ),
                   DropdownMenuItem(
                     value: GenderRatio.fourFemale,
-                    child: Text('3男 / 4女'),
+                    child: Text(strings.ratioFourFemale),
                   ),
                 ],
                 onChanged: (value) => setState(() => _firstRatio = value),
@@ -485,7 +527,7 @@ class _GameEditorScreenState extends ConsumerState<GameEditorScreen> {
             FilledButton.icon(
               onPressed: _saving ? null : () => _save(eventId),
               icon: const Icon(Icons.save_outlined),
-              label: const Text('保存草稿'),
+              label: Text(strings.saveDraft),
             ),
           ],
         ),
@@ -502,10 +544,11 @@ class _NumberField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      decoration: InputDecoration(labelText: '$label（可选）'),
+      decoration: InputDecoration(labelText: strings.optionalField(label)),
     );
   }
 }
@@ -517,6 +560,7 @@ class _EventSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     final event = bundle.event;
     return Card(
       child: Padding(
@@ -528,9 +572,11 @@ class _EventSummary extends StatelessWidget {
               bundle.team.name,
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            if (_dateRange(event.startDate, event.endDate) case final dates?)
+            if (_dateRange(strings, event.startDate, event.endDate)
+                case final dates?)
               Text(dates),
-            if (event.location != null) Text('地点：${event.location}'),
+            if (event.location != null)
+              Text(strings.locationValue(event.location!)),
             if (event.notes != null) ...[
               const SizedBox(height: 8),
               Text(event.notes!),
@@ -571,12 +617,14 @@ Future<void> showEventEditor(
   WidgetRef ref, {
   CompetitionEvent? event,
 }) async {
+  final strings = AppLocalizations.of(context);
   final teams = ref.read(teamsProvider).valueOrNull ?? const <Team>[];
   final available = teams
       .where((team) => !team.archived || team.id == event?.teamId)
       .toList();
   if (available.isEmpty) {
-    showError(context, StateError('请先创建一个可用队伍'));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(strings.createTeamFirst)));
     return;
   }
   final name = TextEditingController(text: event?.name);
@@ -589,7 +637,7 @@ Future<void> showEventEditor(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: Text(event == null ? '新建活动' : '编辑活动'),
+        title: Text(event == null ? strings.newEvent : strings.editEvent),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
@@ -598,12 +646,12 @@ Future<void> showEventEditor(
               children: [
                 TextField(
                   controller: name,
-                  decoration: const InputDecoration(labelText: '名称'),
+                  decoration: InputDecoration(labelText: strings.eventName),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: teamId,
-                  decoration: const InputDecoration(labelText: '队伍'),
+                  decoration: InputDecoration(labelText: strings.team),
                   items: [
                     for (final team in available)
                       DropdownMenuItem(value: team.id, child: Text(team.name)),
@@ -630,8 +678,9 @@ Future<void> showEventEditor(
                         },
                         child: Text(
                           start == null
-                              ? '开始日期（可选）'
-                              : DateFormat('yyyy-MM-dd').format(start!),
+                              ? strings.startDateOptional
+                              : DateFormat.yMd(strings.localeName)
+                                    .format(start!),
                         ),
                       ),
                     ),
@@ -649,8 +698,8 @@ Future<void> showEventEditor(
                         },
                         child: Text(
                           end == null
-                              ? '结束日期（可选）'
-                              : DateFormat('yyyy-MM-dd').format(end!),
+                              ? strings.endDateOptional
+                              : DateFormat.yMd(strings.localeName).format(end!),
                         ),
                       ),
                     ),
@@ -659,13 +708,15 @@ Future<void> showEventEditor(
                 const SizedBox(height: 12),
                 TextField(
                   controller: location,
-                  decoration: const InputDecoration(labelText: '地点（可选）'),
+                  decoration: InputDecoration(
+                    labelText: strings.locationOptional,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: notes,
                   maxLines: 3,
-                  decoration: const InputDecoration(labelText: '备注（可选）'),
+                  decoration: InputDecoration(labelText: strings.notesOptional),
                 ),
               ],
             ),
@@ -674,11 +725,11 @@ Future<void> showEventEditor(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('保存'),
+            child: Text(strings.save),
           ),
         ],
       ),
@@ -714,12 +765,13 @@ Future<void> showEventRosterEditor(
   WidgetRef ref,
   EventBundle bundle,
 ) async {
+  final strings = AppLocalizations.of(context);
   final selected = bundle.roster.map((player) => player.id).toSet();
   final saved = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: const Text('管理活动阵容'),
+        title: Text(strings.manageEventRoster),
         content: SizedBox(
           width: 480,
           height: 520,
@@ -729,7 +781,9 @@ Future<void> showEventRosterEditor(
                 CheckboxListTile(
                   value: selected.contains(player.id),
                   title: Text(_playerName(player)),
-                  subtitle: player.archived ? const Text('已在队伍中归档') : null,
+                  subtitle: player.archived
+                      ? Text(strings.archivedOnTeam)
+                      : null,
                   onChanged: (value) => setDialogState(() {
                     if (value ?? false) {
                       selected.add(player.id);
@@ -744,11 +798,11 @@ Future<void> showEventRosterEditor(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('保存'),
+            child: Text(strings.save),
           ),
         ],
       ),
@@ -762,8 +816,8 @@ Future<void> showEventRosterEditor(
     if (removed.isNotEmpty) {
       final confirmed = await confirmDialog(
         context,
-        title: '移出活动阵容',
-        message: '移出的球员也会从所有快捷阵线中删除；已经开始的比赛快照不受影响。',
+        title: strings.removeFromEventRoster,
+        message: strings.removeFromEventRosterMessage,
       );
       if (!confirmed) return;
     }
@@ -781,13 +835,16 @@ Future<void> showLineEditor(
   EventBundle bundle, {
   LinePreset? line,
 }) async {
+  final strings = AppLocalizations.of(context);
   final name = TextEditingController(text: line?.name);
   final selected = (line?.memberPlayerIds ?? const <String>[]).toSet();
   final saved = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: Text(line == null ? '添加快捷阵线' : '编辑快捷阵线'),
+        title: Text(
+          line == null ? strings.addQuickLine : strings.editQuickLine,
+        ),
         content: SizedBox(
           width: 480,
           height: 560,
@@ -795,7 +852,7 @@ Future<void> showLineEditor(
             children: [
               TextField(
                 controller: name,
-                decoration: const InputDecoration(labelText: '名称'),
+                decoration: InputDecoration(labelText: strings.lineName),
               ),
               const SizedBox(height: 8),
               Expanded(
@@ -822,11 +879,11 @@ Future<void> showLineEditor(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('保存'),
+            child: Text(strings.save),
           ),
         ],
       ),
@@ -856,10 +913,10 @@ String _playerName(Player player) {
       : '#${player.number} ${player.name}';
 }
 
-String? _dateRange(DateTime? start, DateTime? end) {
+String? _dateRange(AppLocalizations strings, DateTime? start, DateTime? end) {
   if (start == null && end == null) return null;
-  final format = DateFormat('yyyy-MM-dd');
-  if (start == null) return '至 ${format.format(end!)}';
-  if (end == null) return format.format(start);
-  return '${format.format(start)} – ${format.format(end)}';
+  final format = DateFormat.yMd(strings.localeName);
+  if (start == null) return strings.dateUntil(format.format(end!));
+  if (end == null) return strings.dateFrom(format.format(start));
+  return strings.dateRange(format.format(start), format.format(end));
 }

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../domain/app_error.dart';
 import '../domain/models.dart';
 import '../domain/recording.dart';
 import 'database.dart';
@@ -75,7 +76,9 @@ class TeamRepository {
     required TeamType type,
   }) async {
     final normalizedName = name.trim();
-    if (normalizedName.isEmpty) throw ArgumentError('队伍名称不能为空');
+    if (normalizedName.isEmpty) {
+      throw const AppException(AppErrorCode.teamNameRequired);
+    }
     final teamId = id ?? newId();
     final now = DateTime.now();
     final existing = id == null
@@ -137,8 +140,12 @@ class TeamRepository {
     String? number,
   }) async {
     final normalizedName = name.trim();
-    if (normalizedName.isEmpty) throw ArgumentError('球员姓名不能为空');
-    if (await getTeam(teamId) == null) throw StateError('队伍不存在');
+    if (normalizedName.isEmpty) {
+      throw const AppException(AppErrorCode.playerNameRequired);
+    }
+    if (await getTeam(teamId) == null) {
+      throw const AppException(AppErrorCode.teamNotFound);
+    }
     final playerId = id ?? newId();
     final now = DateTime.now();
     final existing = id == null
@@ -247,11 +254,13 @@ class EventRepository {
 
   Future<String> saveEvent(EventSaveRequest request, {String? id}) async {
     final normalizedName = request.name.trim();
-    if (normalizedName.isEmpty) throw ArgumentError('活动名称不能为空');
+    if (normalizedName.isEmpty) {
+      throw const AppException(AppErrorCode.eventNameRequired);
+    }
     if (request.startDate != null &&
         request.endDate != null &&
         request.endDate!.isBefore(request.startDate!)) {
-      throw ArgumentError('结束日期不能早于开始日期');
+      throw const AppException(AppErrorCode.eventEndBeforeStart);
     }
     final eventId = id ?? newId();
     final now = DateTime.now();
@@ -263,13 +272,15 @@ class EventRepository {
     final team = await teams.getTeam(request.teamId);
     final keepsExistingTeam = existing?.teamId == request.teamId;
     if (team == null || (team.archived && !keepsExistingTeam)) {
-      throw StateError('请选择有效队伍');
+      throw const AppException(AppErrorCode.invalidTeam);
     }
     if (existing != null && existing.teamId != request.teamId) {
       final games = await (database.select(
         database.gameEntries,
       )..where((row) => row.eventId.equals(eventId))).get();
-      if (games.isNotEmpty) throw StateError('已有比赛的活动不能更换队伍');
+      if (games.isNotEmpty) {
+        throw const AppException(AppErrorCode.eventTeamLocked);
+      }
     }
 
     await database.transaction(() async {
@@ -313,10 +324,14 @@ class EventRepository {
 
   Future<void> setRoster(String eventId, Set<String> playerIds) async {
     final event = await getEvent(eventId);
-    if (event == null) throw StateError('活动不存在');
+    if (event == null) {
+      throw const AppException(AppErrorCode.eventNotFound);
+    }
     final validPlayers = await teams.getPlayers(event.teamId);
     final validIds = validPlayers.map((player) => player.id).toSet();
-    if (!validIds.containsAll(playerIds)) throw StateError('活动阵容包含其他队伍的球员');
+    if (!validIds.containsAll(playerIds)) {
+      throw const AppException(AppErrorCode.eventRosterWrongTeam);
+    }
     final existing = await (database.select(
       database.eventRosterEntries,
     )..where((row) => row.eventId.equals(eventId))).get();
@@ -363,12 +378,16 @@ class EventRepository {
     required Set<String> playerIds,
   }) async {
     final normalizedName = name.trim();
-    if (normalizedName.isEmpty) throw ArgumentError('阵线名称不能为空');
+    if (normalizedName.isEmpty) {
+      throw const AppException(AppErrorCode.lineNameRequired);
+    }
     final roster = await (database.select(
       database.eventRosterEntries,
     )..where((row) => row.eventId.equals(eventId))).get();
     final rosterIds = roster.map((row) => row.playerId).toSet();
-    if (!rosterIds.containsAll(playerIds)) throw StateError('阵线只能包含活动阵容球员');
+    if (!rosterIds.containsAll(playerIds)) {
+      throw const AppException(AppErrorCode.linePlayersOutsideRoster);
+    }
     final existingLines = await (database.select(
       database.linePresetEntries,
     )..where((row) => row.eventId.equals(eventId))).get();
@@ -377,7 +396,7 @@ class EventRepository {
           line.id != id &&
           line.name.toLowerCase() == normalizedName.toLowerCase(),
     )) {
-      throw ArgumentError('阵线名称不能重复');
+      throw const AppException(AppErrorCode.duplicateLineName);
     }
     final lineId = id ?? newId();
     final now = DateTime.now();
@@ -438,7 +457,9 @@ class EventRepository {
               ..where((row) => row.eventId.equals(id))
               ..limit(1))
             .getSingleOrNull();
-    if (game != null) throw StateError('只能永久删除没有比赛的活动');
+    if (game != null) {
+      throw const AppException(AppErrorCode.eventWithGamesCannotDelete);
+    }
     await (database.delete(
       database.competitionEventEntries,
     )..where((row) => row.id.equals(id))).go();
@@ -448,10 +469,14 @@ class EventRepository {
     final eventRecord = await (database.select(
       database.competitionEventEntries,
     )..where((row) => row.id.equals(eventId))).getSingleOrNull();
-    if (eventRecord == null) throw StateError('活动不存在');
+    if (eventRecord == null) {
+      throw const AppException(AppErrorCode.eventNotFound);
+    }
     final event = _eventFromRecord(eventRecord);
     final team = await teams.getTeam(event.teamId);
-    if (team == null) throw StateError('活动队伍不存在');
+    if (team == null) {
+      throw const AppException(AppErrorCode.eventTeamNotFound);
+    }
     final teamPlayers = await teams.getPlayers(event.teamId);
     final rosterRecords = await (database.select(
       database.eventRosterEntries,
@@ -621,7 +646,9 @@ class GameRepository {
       request.maxPoints,
     );
     final eventBundle = await events.getEventBundle(request.eventId);
-    if (eventBundle.event.archived) throw StateError('已归档活动不能新建比赛');
+    if (eventBundle.event.archived) {
+      throw const AppException(AppErrorCode.archivedEventCannotCreateGame);
+    }
     final normalizedOpponent = request.opponentName.trim();
     final gameId = id ?? newId();
     final existing = id == null
@@ -630,7 +657,7 @@ class GameRepository {
             database.gameEntries,
           )..where((row) => row.id.equals(gameId))).getSingleOrNull();
     if (existing != null && existing.status != GameStatus.draft.name) {
-      throw StateError('已开始的比赛不能修改这些设置');
+      throw const AppException(AppErrorCode.startedGameImmutable);
     }
     await database
         .into(database.gameEntries)
@@ -641,9 +668,7 @@ class GameRepository {
             teamId: eventBundle.team.id,
             teamName: eventBundle.team.name,
             teamType: eventBundle.team.type.name,
-            opponentName: normalizedOpponent.isEmpty
-                ? '未命名对手'
-                : normalizedOpponent,
+            opponentName: normalizedOpponent,
             openingMode: request.openingMode.name,
             softCapMinutes: Value(request.softCapMinutes),
             totalCapMinutes: Value(request.totalCapMinutes),
@@ -660,7 +685,7 @@ class GameRepository {
     await database.transaction(() async {
       final gameRecord = await _gameRecord(gameId);
       if (gameRecord.status != GameStatus.draft.name) {
-        throw StateError('只能开始尚未开赛的比赛');
+        throw const AppException(AppErrorCode.gameNotDraft);
       }
       final active =
           await (database.select(database.gameEntries)
@@ -668,12 +693,18 @@ class GameRepository {
                 ..limit(1))
               .getSingleOrNull();
       if (active != null) {
-        throw StateError(
-          '已有一场比赛正在记录：${active.teamName} vs ${active.opponentName}',
+        throw AppException(
+          AppErrorCode.anotherGameActive,
+          arguments: {
+            'teamName': active.teamName,
+            'opponentName': active.opponentName,
+          },
         );
       }
       final eventBundle = await events.getEventBundle(gameRecord.eventId);
-      if (eventBundle.roster.isEmpty) throw StateError('活动阵容为空，无法开始比赛');
+      if (eventBundle.roster.isEmpty) {
+        throw const AppException(AppErrorCode.eventRosterEmpty);
+      }
       for (final player in eventBundle.roster) {
         await database
             .into(database.gameRosterEntries)
@@ -715,7 +746,7 @@ class GameRepository {
       database.gameEntries,
     )..where((row) => row.id.equals(gameId))).write(
       GameEntriesCompanion(
-        opponentName: Value(normalized.isEmpty ? '未命名对手' : normalized),
+        opponentName: Value(normalized),
         softCapMinutes: Value(softCapMinutes),
         totalCapMinutes: Value(totalCapMinutes),
         maxPoints: Value(maxPoints),
@@ -749,7 +780,7 @@ class GameRepository {
       final bundle = await getGameBundle(gameId);
       _requireInProgress(bundle.game);
       if (bundle.state.stage != RecordingStage.betweenPoints) {
-        throw StateError('当前不能开始新的一分');
+        throw const AppException(AppErrorCode.cannotStartPoint);
       }
       final selected =
           bundle.roster
@@ -803,7 +834,7 @@ class GameRepository {
     _requireInProgress(bundle.game);
     if (bundle.state.stage != RecordingStage.betweenPoints ||
         bundle.state.halftimeTaken) {
-      throw StateError('当前不能进入中场');
+      throw const AppException(AppErrorCode.cannotStartHalftime);
     }
     await _insertAction(gameId: gameId, kind: RecordedActionKind.startHalftime);
   }
@@ -811,7 +842,7 @@ class GameRepository {
   Future<void> endHalftime(String gameId) async {
     final bundle = await getGameBundle(gameId);
     if (bundle.state.stage != RecordingStage.halftime) {
-      throw StateError('当前不在中场');
+      throw const AppException(AppErrorCode.notInHalftime);
     }
     await _insertAction(gameId: gameId, kind: RecordedActionKind.endHalftime);
   }
@@ -875,7 +906,9 @@ class GameRepository {
 
   Future<void> confirmHolderGoal(String gameId) async {
     final bundle = await getGameBundle(gameId);
-    if (!bundle.state.canConfirmGoal) throw StateError('当前持盘不是一次可确认的接盘');
+    if (bundle.state.holderParticipantId == null) {
+      throw const AppException(AppErrorCode.noScoringHolder);
+    }
     await _recordPointAction(
       gameId,
       RecordedActionKind.confirmGoal,
@@ -949,15 +982,19 @@ class GameRepository {
   Future<void> reopenGame(String gameId) async {
     await database.transaction(() async {
       final active = await getActiveGame();
-      if (active != null && active.id != gameId) throw StateError('已有一场比赛正在记录');
+      if (active != null && active.id != gameId) {
+        throw const AppException(AppErrorCode.gameAlreadyActive);
+      }
       final game = gameFromRecord(await _gameRecord(gameId));
-      if (game.status != GameStatus.completed) throw StateError('只能重新打开已结束比赛');
+      if (game.status != GameStatus.completed) {
+        throw const AppException(AppErrorCode.onlyCompletedGameCanReopen);
+      }
       final bundle = await getGameBundle(gameId);
       final target = game.maxPoints;
       if (target != null &&
           (bundle.state.ourScore >= target ||
               bundle.state.opponentScore >= target)) {
-        throw StateError('继续比赛前，目标分必须高于当前比分');
+        throw const AppException(AppErrorCode.targetMustExceedScore);
       }
       final last =
           await (database.select(database.recordedActionEntries)
@@ -1068,22 +1105,24 @@ class GameRepository {
       final current = bundle ?? await getGameBundle(gameId);
       _requireInProgress(current.game);
       if (!allowedStages.contains(current.state.stage)) {
-        throw StateError('当前比赛状态不能记录此操作');
+        throw const AppException(AppErrorCode.actionNotAllowed);
       }
       final pointId = current.state.currentPointId;
-      if (pointId == null) throw StateError('当前没有正在进行的分');
+      if (pointId == null) {
+        throw const AppException(AppErrorCode.noActivePoint);
+      }
       final participantIds = current
           .participantsForPoint(pointId)
           .map((participant) => participant.id)
           .toSet();
       if (actorId != null && !participantIds.contains(actorId)) {
-        throw StateError('操作球员不在当前分阵容中');
+        throw const AppException(AppErrorCode.actorNotInLineup);
       }
       if (targetId != null && !participantIds.contains(targetId)) {
-        throw StateError('目标球员不在当前分阵容中');
+        throw const AppException(AppErrorCode.targetNotInLineup);
       }
       if (actorId != null && actorId == targetId) {
-        throw StateError('传盘人与接盘人不能相同');
+        throw const AppException(AppErrorCode.samePasserReceiver);
       }
       await _insertAction(
         gameId: gameId,
@@ -1155,23 +1194,27 @@ class GameRepository {
     final record = await (database.select(
       database.gameEntries,
     )..where((row) => row.id.equals(id))).getSingleOrNull();
-    if (record == null) throw StateError('比赛不存在');
+    if (record == null) {
+      throw const AppException(AppErrorCode.gameNotFound);
+    }
     return record;
   }
 
   static void _requireInProgress(Game game) {
-    if (game.status != GameStatus.inProgress) throw StateError('比赛不在记录状态');
+    if (game.status != GameStatus.inProgress) {
+      throw const AppException(AppErrorCode.gameNotInProgress);
+    }
   }
 
   static void _validateLimits(int? soft, int? total, int? maxPoints) {
     if (soft != null && soft <= 0 || total != null && total <= 0) {
-      throw ArgumentError('封顶时间必须是正整数');
+      throw const AppException(AppErrorCode.capMustBePositive);
     }
     if (soft != null && total != null && soft > total) {
-      throw ArgumentError('软封顶时间不能晚于总封顶时间');
+      throw const AppException(AppErrorCode.softCapAfterTotalCap);
     }
     if (maxPoints != null && maxPoints <= 0) {
-      throw ArgumentError('目标分必须是正整数');
+      throw const AppException(AppErrorCode.targetMustBePositive);
     }
   }
 

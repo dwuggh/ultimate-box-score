@@ -339,7 +339,10 @@ class ExportService {
     );
   }
 
-  Future<bool> buildAndDeliver(ExportScope scope) async {
+  Future<bool> buildAndDeliver(
+    ExportScope scope, {
+    required String shareTitle,
+  }) async {
     final artifact = await build(scope);
     if (Platform.isLinux) {
       final location = await selector.getSaveLocation(
@@ -358,7 +361,7 @@ class ExportService {
     }
     await SharePlus.instance.share(
       ShareParams(
-        title: '导出 Ultimate Box Score 数据',
+        title: shareTitle,
         files: [XFile.fromData(artifact.bytes, mimeType: 'application/zip')],
         fileNameOverrides: [artifact.fileName],
       ),

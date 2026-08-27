@@ -129,6 +129,22 @@ void main() {
     expect(confirmed.stats['b']?.pointsPlayed, 1);
   });
 
+  test('a pickup holder can score without a catch or assist', () {
+    final state = replay([
+      action(1, RecordedActionKind.startPoint),
+      action(2, RecordedActionKind.pickup, actor: 'pa'),
+      action(3, RecordedActionKind.confirmGoal, actor: 'pa'),
+    ]);
+
+    expect(state.ourScore, 1);
+    expect(state.stage, RecordingStage.betweenPoints);
+    expect(state.stats['a']?.touches, 1);
+    expect(state.stats['a']?.goals, 1);
+    expect(state.stats['a']?.catches ?? 0, 0);
+    expect(state.stats['a']?.assists ?? 0, 0);
+    expect(state.stats['a']?.pointsPlayed, 1);
+  });
+
   test('voiding goal confirmation leaves its pass and holder intact', () {
     final state = replay([
       action(1, RecordedActionKind.startPoint),

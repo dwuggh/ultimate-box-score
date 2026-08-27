@@ -241,7 +241,7 @@ final class AppDatabase extends _$AppDatabase {
     : super(implementation ?? driftDatabase(name: 'ultimate_box_score'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -266,6 +266,12 @@ final class AppDatabase extends _$AppDatabase {
           await customStatement('DROP TABLE IF EXISTS $table');
         }
         await migrator.createAll();
+      }
+      if (from < 3) {
+        await customStatement(
+          "UPDATE game_entries SET opponent_name = '' "
+          "WHERE opponent_name = '未命名对手'",
+        );
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

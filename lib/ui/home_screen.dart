@@ -14,6 +14,7 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
@@ -24,21 +25,21 @@ class AppShell extends StatelessWidget {
             initialLocation: index == navigationShell.currentIndex,
           );
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups),
-            label: '队伍',
+            icon: const Icon(Icons.groups_outlined),
+            selectedIcon: const Icon(Icons.groups),
+            label: strings.teams,
           ),
           NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note),
-            label: '比赛',
+            icon: const Icon(Icons.event_note_outlined),
+            selectedIcon: const Icon(Icons.event_note),
+            label: strings.games,
           ),
           NavigationDestination(
-            icon: Icon(Icons.query_stats_outlined),
-            selectedIcon: Icon(Icons.query_stats),
-            label: '统计',
+            icon: const Icon(Icons.query_stats_outlined),
+            selectedIcon: const Icon(Icons.query_stats),
+            label: strings.stats,
           ),
         ],
       ),
@@ -102,7 +103,8 @@ class TeamList extends ConsumerWidget {
                     ),
                     title: Text(team.name),
                     subtitle: Text(
-                      '${teamTypeLabel(team.type)}${team.archived ? ' · 已归档' : ''}',
+                      '${strings.teamTypeLabel(team.type)}'
+                      '${team.archived ? ' · ${strings.archived}' : ''}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.go('/team/${team.id}'),
@@ -120,26 +122,33 @@ Future<void> showTeamEditor(
   WidgetRef ref, {
   Team? team,
 }) async {
+  final strings = AppLocalizations.of(context);
   final nameController = TextEditingController(text: team?.name);
   var type = team?.type ?? TeamType.mixed;
   final saved = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setDialogState) => AlertDialog(
-        title: Text(team == null ? '添加队伍' : '编辑队伍'),
+        title: Text(team == null ? strings.addTeam : strings.editTeam),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
               autofocus: true,
-              decoration: const InputDecoration(labelText: '队伍名称'),
+              decoration: InputDecoration(labelText: strings.teamName),
             ),
             const SizedBox(height: 16),
             SegmentedButton<TeamType>(
-              segments: const [
-                ButtonSegment(value: TeamType.mixed, label: Text('混合组')),
-                ButtonSegment(value: TeamType.single, label: Text('单一性别组')),
+              segments: [
+                ButtonSegment(
+                  value: TeamType.mixed,
+                  label: Text(strings.teamTypeMixed),
+                ),
+                ButtonSegment(
+                  value: TeamType.single,
+                  label: Text(strings.teamTypeSingle),
+                ),
               ],
               selected: {type},
               onSelectionChanged: (value) {
@@ -151,11 +160,11 @@ Future<void> showTeamEditor(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(strings.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('保存'),
+            child: Text(strings.save),
           ),
         ],
       ),
