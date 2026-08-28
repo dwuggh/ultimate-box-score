@@ -172,7 +172,7 @@ class ExportService {
     }
 
     final manifest = <String, Object?>{
-      'formatVersion': 1,
+      'formatVersion': 2,
       'app': 'ultimate_box_score',
       'appVersion': '1.0.0+1',
       'scope': scope.kind.name,
@@ -308,7 +308,6 @@ class ExportService {
         'target_participant_id',
         'related_action_id',
         'created_at',
-        'voided_at',
       ],
       ...actions.map(_actionCsv),
     ]);
@@ -602,7 +601,6 @@ class ExportService {
     'targetParticipantId': row.targetParticipantId,
     'relatedActionId': row.relatedActionId,
     'createdAt': row.createdAt.toUtc().toIso8601String(),
-    'voidedAt': row.voidedAt?.toUtc().toIso8601String(),
   };
 
   static List<Object?> _actionCsv(RecordedActionRecord row) => [
@@ -615,7 +613,6 @@ class ExportService {
     row.targetParticipantId,
     row.relatedActionId,
     row.createdAt.toUtc().toIso8601String(),
-    row.voidedAt?.toUtc().toIso8601String(),
   ];
 
   static Map<String, Object?> _settingJson(AppSettingRecord row) => {

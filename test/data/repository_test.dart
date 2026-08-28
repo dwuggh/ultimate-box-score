@@ -6,6 +6,33 @@ import 'package:ultimate_box_score/domain/app_error.dart';
 import 'package:ultimate_box_score/domain/models.dart';
 
 void main() {
+  const legacyGameTable =
+      'CREATE TABLE game_entries ('
+      'id TEXT NOT NULL PRIMARY KEY, '
+      'opponent_name TEXT NOT NULL'
+      ')';
+  const legacyPointTable =
+      'CREATE TABLE point_entries ('
+      'id TEXT NOT NULL PRIMARY KEY, '
+      'game_id TEXT NOT NULL, '
+      'point_number INTEGER NOT NULL, '
+      'created_at INTEGER NOT NULL'
+      ')';
+  const legacyActionTable =
+      'CREATE TABLE recorded_action_entries ('
+      'id TEXT NOT NULL PRIMARY KEY, '
+      'game_id TEXT NOT NULL, '
+      'point_id TEXT, '
+      'sequence INTEGER NOT NULL, '
+      'kind TEXT NOT NULL, '
+      'actor_participant_id TEXT, '
+      'target_participant_id TEXT, '
+      'related_action_id TEXT, '
+      'created_at INTEGER NOT NULL, '
+      'voided_at INTEGER, '
+      'UNIQUE (game_id, sequence)'
+      ')';
+
   late AppDatabase database;
   late TeamRepository teams;
   late EventRepository events;
@@ -26,14 +53,12 @@ void main() {
       NativeDatabase.memory(
         setup: (rawDatabase) {
           rawDatabase
+            ..execute(legacyGameTable)
+            ..execute(legacyPointTable)
+            ..execute(legacyActionTable)
             ..execute(
-              'CREATE TABLE game_entries ('
-              'opponent_name TEXT NOT NULL'
-              ')',
-            )
-            ..execute(
-              "INSERT INTO game_entries (opponent_name) "
-              "VALUES ('未命名对手')",
+              "INSERT INTO game_entries (id, opponent_name) "
+              "VALUES ('game', '未命名对手')",
             )
             ..execute('PRAGMA user_version = 2');
         },
@@ -45,6 +70,55 @@ void main() {
         .getSingle();
 
     expect(row.read<String>('opponent_name'), isEmpty);
+  });
+
+  test('migration deletes voided actions and their empty points', () async {
+    await database.close();
+    database = AppDatabase(
+      NativeDatabase.memory(
+        setup: (rawDatabase) {
+          rawDatabase
+            ..execute(legacyGameTable)
+            ..execute(legacyPointTable)
+            ..execute(legacyActionTable)
+            ..execute(
+              "INSERT INTO game_entries (id, opponent_name) "
+              "VALUES ('game', 'opponent')",
+            )
+            ..execute(
+              'INSERT INTO point_entries '
+              '(id, game_id, point_number, created_at) VALUES '
+              "('active-point', 'game', 1, 1), "
+              "('undone-point', 'game', 2, 2)",
+            )
+            ..execute(
+              'INSERT INTO recorded_action_entries '
+              '(id, game_id, point_id, sequence, kind, created_at, voided_at) '
+              'VALUES '
+              "('active', 'game', 'active-point', 1, 'startPoint', 1, NULL), "
+              "('undone', 'game', 'undone-point', 2, 'startPoint', 2, 3)",
+            )
+            ..execute('PRAGMA user_version = 3');
+        },
+      ),
+    );
+
+    final actions = await database
+        .customSelect('SELECT id FROM recorded_action_entries')
+        .get();
+    final points = await database
+        .customSelect('SELECT id FROM point_entries')
+        .get();
+    final actionColumns = await database
+        .customSelect("PRAGMA table_info('recorded_action_entries')")
+        .get();
+
+    expect(actions.map((row) => row.read<String>('id')), ['active']);
+    expect(points.map((row) => row.read<String>('id')), ['active-point']);
+    expect(
+      actionColumns.map((row) => row.read<String>('name')),
+      isNot(contains('voided_at')),
+    );
   });
 
   Future<({String teamId, String eventId, String gameId, String a, String b})>
@@ -179,32 +253,64 @@ void main() {
     );
   });
 
-  test('team totals include completed games and undo is auditable', () async {
-    final fixture = await createFixture(maxPoints: 1);
-    final (participantA, participantB) = await startPoint(
-      fixture.gameId,
-      fixture.a,
-      fixture.b,
-    );
-    await games.recordPickup(fixture.gameId, participantA);
-    await games.recordGoalCatch(fixture.gameId, participantB);
+  test(
+    'undo permanently removes the latest action and restores state',
+    () async {
+      final fixture = await createFixture(maxPoints: 1);
+      final (participantA, participantB) = await startPoint(
+        fixture.gameId,
+        fixture.a,
+        fixture.b,
+      );
+      await games.recordPickup(fixture.gameId, participantA);
+      await games.recordGoalCatch(fixture.gameId, participantB);
+
+      var bundle = await games.getGameBundle(fixture.gameId);
+      expect(bundle.game.status, GameStatus.completed);
+      expect((await games.getTeamStats(fixture.teamId))[fixture.b]?.goals, 1);
+      final goalAction = bundle.actions.last;
+      final actionCount = bundle.actions.length;
+
+      await games.updateMutableGame(
+        gameId: fixture.gameId,
+        opponentName: bundle.game.opponentName,
+        maxPoints: 2,
+      );
+      await games.reopenGame(fixture.gameId);
+      await games.undoLast(fixture.gameId);
+      bundle = await games.getGameBundle(fixture.gameId);
+      expect(bundle.game.status, GameStatus.inProgress);
+      expect(bundle.state.ourScore, 0);
+      expect(bundle.state.stage, RecordingStage.offense);
+      expect(bundle.state.holderParticipantId, participantA);
+      expect(bundle.actions, hasLength(actionCount - 1));
+      expect(
+        bundle.actions.map((action) => action.id),
+        isNot(contains(goalAction.id)),
+      );
+      expect(await games.getTeamStats(fixture.teamId), isEmpty);
+    },
+  );
+
+  test('undoing point start removes its point and participants', () async {
+    final fixture = await createFixture();
+    await startPoint(fixture.gameId, fixture.a, fixture.b);
 
     var bundle = await games.getGameBundle(fixture.gameId);
-    expect(bundle.game.status, GameStatus.completed);
-    expect((await games.getTeamStats(fixture.teamId))[fixture.b]?.goals, 1);
+    expect(bundle.points, hasLength(1));
+    expect(bundle.participants, hasLength(3));
 
-    await games.updateMutableGame(
-      gameId: fixture.gameId,
-      opponentName: bundle.game.opponentName,
-      maxPoints: 2,
-    );
-    await games.reopenGame(fixture.gameId);
     await games.undoLast(fixture.gameId);
     bundle = await games.getGameBundle(fixture.gameId);
-    expect(bundle.game.status, GameStatus.inProgress);
-    expect(bundle.state.ourScore, 0);
-    expect(bundle.actions.last.voided, isTrue);
-    expect(await games.getTeamStats(fixture.teamId), isEmpty);
+    expect(bundle.actions, isEmpty);
+    expect(bundle.points, isEmpty);
+    expect(bundle.participants, isEmpty);
+    expect(bundle.state.stage, RecordingStage.betweenPoints);
+    expect(bundle.state.nextPointNumber, 1);
+
+    await startPoint(fixture.gameId, fixture.a, fixture.b);
+    bundle = await games.getGameBundle(fixture.gameId);
+    expect(bundle.points.single.number, 1);
   });
 
   test('pickup holder can score and complete a target-score game', () async {

@@ -4783,17 +4783,6 @@ class $RecordedActionEntriesTable extends RecordedActionEntries
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _voidedAtMeta = const VerificationMeta(
-    'voidedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> voidedAt = GeneratedColumn<DateTime>(
-    'voided_at',
-    aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4805,7 +4794,6 @@ class $RecordedActionEntriesTable extends RecordedActionEntries
     targetParticipantId,
     relatedActionId,
     createdAt,
-    voidedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4889,12 +4877,6 @@ class $RecordedActionEntriesTable extends RecordedActionEntries
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
-    if (data.containsKey('voided_at')) {
-      context.handle(
-        _voidedAtMeta,
-        voidedAt.isAcceptableOrUnknown(data['voided_at']!, _voidedAtMeta),
-      );
-    }
     return context;
   }
 
@@ -4944,10 +4926,6 @@ class $RecordedActionEntriesTable extends RecordedActionEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
-      voidedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}voided_at'],
-      ),
     );
   }
 
@@ -4968,7 +4946,6 @@ class RecordedActionRecord extends DataClass
   final String? targetParticipantId;
   final String? relatedActionId;
   final DateTime createdAt;
-  final DateTime? voidedAt;
   const RecordedActionRecord({
     required this.id,
     required this.gameId,
@@ -4979,7 +4956,6 @@ class RecordedActionRecord extends DataClass
     this.targetParticipantId,
     this.relatedActionId,
     required this.createdAt,
-    this.voidedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5001,9 +4977,6 @@ class RecordedActionRecord extends DataClass
       map['related_action_id'] = Variable<String>(relatedActionId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
-    if (!nullToAbsent || voidedAt != null) {
-      map['voided_at'] = Variable<DateTime>(voidedAt);
-    }
     return map;
   }
 
@@ -5026,9 +4999,6 @@ class RecordedActionRecord extends DataClass
           ? const Value.absent()
           : Value(relatedActionId),
       createdAt: Value(createdAt),
-      voidedAt: voidedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(voidedAt),
     );
   }
 
@@ -5051,7 +5021,6 @@ class RecordedActionRecord extends DataClass
       ),
       relatedActionId: serializer.fromJson<String?>(json['relatedActionId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
-      voidedAt: serializer.fromJson<DateTime?>(json['voidedAt']),
     );
   }
   @override
@@ -5067,7 +5036,6 @@ class RecordedActionRecord extends DataClass
       'targetParticipantId': serializer.toJson<String?>(targetParticipantId),
       'relatedActionId': serializer.toJson<String?>(relatedActionId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
-      'voidedAt': serializer.toJson<DateTime?>(voidedAt),
     };
   }
 
@@ -5081,7 +5049,6 @@ class RecordedActionRecord extends DataClass
     Value<String?> targetParticipantId = const Value.absent(),
     Value<String?> relatedActionId = const Value.absent(),
     DateTime? createdAt,
-    Value<DateTime?> voidedAt = const Value.absent(),
   }) => RecordedActionRecord(
     id: id ?? this.id,
     gameId: gameId ?? this.gameId,
@@ -5098,7 +5065,6 @@ class RecordedActionRecord extends DataClass
         ? relatedActionId.value
         : this.relatedActionId,
     createdAt: createdAt ?? this.createdAt,
-    voidedAt: voidedAt.present ? voidedAt.value : this.voidedAt,
   );
   RecordedActionRecord copyWithCompanion(RecordedActionEntriesCompanion data) {
     return RecordedActionRecord(
@@ -5117,7 +5083,6 @@ class RecordedActionRecord extends DataClass
           ? data.relatedActionId.value
           : this.relatedActionId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      voidedAt: data.voidedAt.present ? data.voidedAt.value : this.voidedAt,
     );
   }
 
@@ -5132,8 +5097,7 @@ class RecordedActionRecord extends DataClass
           ..write('actorParticipantId: $actorParticipantId, ')
           ..write('targetParticipantId: $targetParticipantId, ')
           ..write('relatedActionId: $relatedActionId, ')
-          ..write('createdAt: $createdAt, ')
-          ..write('voidedAt: $voidedAt')
+          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -5149,7 +5113,6 @@ class RecordedActionRecord extends DataClass
     targetParticipantId,
     relatedActionId,
     createdAt,
-    voidedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -5163,8 +5126,7 @@ class RecordedActionRecord extends DataClass
           other.actorParticipantId == this.actorParticipantId &&
           other.targetParticipantId == this.targetParticipantId &&
           other.relatedActionId == this.relatedActionId &&
-          other.createdAt == this.createdAt &&
-          other.voidedAt == this.voidedAt);
+          other.createdAt == this.createdAt);
 }
 
 class RecordedActionEntriesCompanion
@@ -5178,7 +5140,6 @@ class RecordedActionEntriesCompanion
   final Value<String?> targetParticipantId;
   final Value<String?> relatedActionId;
   final Value<DateTime> createdAt;
-  final Value<DateTime?> voidedAt;
   final Value<int> rowid;
   const RecordedActionEntriesCompanion({
     this.id = const Value.absent(),
@@ -5190,7 +5151,6 @@ class RecordedActionEntriesCompanion
     this.targetParticipantId = const Value.absent(),
     this.relatedActionId = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.voidedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RecordedActionEntriesCompanion.insert({
@@ -5203,7 +5163,6 @@ class RecordedActionEntriesCompanion
     this.targetParticipantId = const Value.absent(),
     this.relatedActionId = const Value.absent(),
     required DateTime createdAt,
-    this.voidedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        gameId = Value(gameId),
@@ -5220,7 +5179,6 @@ class RecordedActionEntriesCompanion
     Expression<String>? targetParticipantId,
     Expression<String>? relatedActionId,
     Expression<DateTime>? createdAt,
-    Expression<DateTime>? voidedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5235,7 +5193,6 @@ class RecordedActionEntriesCompanion
         'target_participant_id': targetParticipantId,
       if (relatedActionId != null) 'related_action_id': relatedActionId,
       if (createdAt != null) 'created_at': createdAt,
-      if (voidedAt != null) 'voided_at': voidedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5250,7 +5207,6 @@ class RecordedActionEntriesCompanion
     Value<String?>? targetParticipantId,
     Value<String?>? relatedActionId,
     Value<DateTime>? createdAt,
-    Value<DateTime?>? voidedAt,
     Value<int>? rowid,
   }) {
     return RecordedActionEntriesCompanion(
@@ -5263,7 +5219,6 @@ class RecordedActionEntriesCompanion
       targetParticipantId: targetParticipantId ?? this.targetParticipantId,
       relatedActionId: relatedActionId ?? this.relatedActionId,
       createdAt: createdAt ?? this.createdAt,
-      voidedAt: voidedAt ?? this.voidedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5300,9 +5255,6 @@ class RecordedActionEntriesCompanion
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
-    if (voidedAt.present) {
-      map['voided_at'] = Variable<DateTime>(voidedAt.value);
-    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5321,7 +5273,6 @@ class RecordedActionEntriesCompanion
           ..write('targetParticipantId: $targetParticipantId, ')
           ..write('relatedActionId: $relatedActionId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('voidedAt: $voidedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11337,7 +11288,6 @@ typedef $$RecordedActionEntriesTableCreateCompanionBuilder =
       Value<String?> targetParticipantId,
       Value<String?> relatedActionId,
       required DateTime createdAt,
-      Value<DateTime?> voidedAt,
       Value<int> rowid,
     });
 typedef $$RecordedActionEntriesTableUpdateCompanionBuilder =
@@ -11351,7 +11301,6 @@ typedef $$RecordedActionEntriesTableUpdateCompanionBuilder =
       Value<String?> targetParticipantId,
       Value<String?> relatedActionId,
       Value<DateTime> createdAt,
-      Value<DateTime?> voidedAt,
       Value<int> rowid,
     });
 
@@ -11474,11 +11423,6 @@ class $$RecordedActionEntriesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get voidedAt => $composableBuilder(
-    column: $table.voidedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11611,11 +11555,6 @@ class $$RecordedActionEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get voidedAt => $composableBuilder(
-    column: $table.voidedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   $$GameEntriesTableOrderingComposer get gameId {
     final $$GameEntriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -11736,9 +11675,6 @@ class $$RecordedActionEntriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get voidedAt =>
-      $composableBuilder(column: $table.voidedAt, builder: (column) => column);
 
   $$GameEntriesTableAnnotationComposer get gameId {
     final $$GameEntriesTableAnnotationComposer composer = $composerBuilder(
@@ -11888,7 +11824,6 @@ class $$RecordedActionEntriesTableTableManager
                 Value<String?> targetParticipantId = const Value.absent(),
                 Value<String?> relatedActionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
-                Value<DateTime?> voidedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecordedActionEntriesCompanion(
                 id: id,
@@ -11900,7 +11835,6 @@ class $$RecordedActionEntriesTableTableManager
                 targetParticipantId: targetParticipantId,
                 relatedActionId: relatedActionId,
                 createdAt: createdAt,
-                voidedAt: voidedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -11914,7 +11848,6 @@ class $$RecordedActionEntriesTableTableManager
                 Value<String?> targetParticipantId = const Value.absent(),
                 Value<String?> relatedActionId = const Value.absent(),
                 required DateTime createdAt,
-                Value<DateTime?> voidedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RecordedActionEntriesCompanion.insert(
                 id: id,
@@ -11926,7 +11859,6 @@ class $$RecordedActionEntriesTableTableManager
                 targetParticipantId: targetParticipantId,
                 relatedActionId: relatedActionId,
                 createdAt: createdAt,
-                voidedAt: voidedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

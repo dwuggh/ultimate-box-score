@@ -503,9 +503,7 @@ class _LiveGameViewState extends ConsumerState<_LiveGameView> {
                   children: [
                     IconButton(
                       tooltip: strings.undo,
-                      onPressed:
-                          _busy ||
-                              !bundle.actions.any((action) => !action.voided)
+                      onPressed: _busy || bundle.actions.isEmpty
                           ? null
                           : () => _run(
                               () => ref
@@ -984,8 +982,7 @@ class _RecentActionStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    final active = bundle.actions.where((action) => !action.voided).toList();
-    final latest = active.isEmpty ? null : active.last;
+    final latest = bundle.actions.isEmpty ? null : bundle.actions.last;
     return Material(
       color: Theme.of(context).colorScheme.secondaryContainer,
       child: ListTile(
@@ -1076,13 +1073,7 @@ class _ActionTile extends StatelessWidget {
     return ListTile(
       dense: true,
       leading: Text(time),
-      title: Text(
-        _actionLabel(strings, bundle, action),
-        style: action.voided
-            ? const TextStyle(decoration: TextDecoration.lineThrough)
-            : null,
-      ),
-      subtitle: action.voided ? Text(strings.voided) : null,
+      title: Text(_actionLabel(strings, bundle, action)),
     );
   }
 }

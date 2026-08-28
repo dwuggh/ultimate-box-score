@@ -217,7 +217,6 @@ class RecordedAction {
     this.actorParticipantId,
     this.targetParticipantId,
     this.relatedActionId,
-    this.voidedAt,
   });
 
   final String id;
@@ -229,9 +228,6 @@ class RecordedAction {
   final String? targetParticipantId;
   final String? relatedActionId;
   final DateTime createdAt;
-  final DateTime? voidedAt;
-
-  bool get voided => voidedAt != null;
 }
 
 class PlayerStats {

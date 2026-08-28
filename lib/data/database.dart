@@ -200,7 +200,6 @@ class RecordedActionEntries extends Table {
   )();
   TextColumn get relatedActionId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
-  DateTimeColumn get voidedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -241,7 +240,7 @@ final class AppDatabase extends _$AppDatabase {
     : super(implementation ?? driftDatabase(name: 'ultimate_box_score'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -266,12 +265,26 @@ final class AppDatabase extends _$AppDatabase {
           await customStatement('DROP TABLE IF EXISTS $table');
         }
         await migrator.createAll();
+        return;
       }
       if (from < 3) {
         await customStatement(
           "UPDATE game_entries SET opponent_name = '' "
           "WHERE opponent_name = '未命名对手'",
         );
+      }
+      if (from < 4) {
+        await customStatement(
+          'DELETE FROM recorded_action_entries WHERE voided_at IS NOT NULL',
+        );
+        await customStatement(
+          'DELETE FROM point_entries '
+          'WHERE NOT EXISTS ('
+          'SELECT 1 FROM recorded_action_entries '
+          'WHERE recorded_action_entries.point_id = point_entries.id'
+          ')',
+        );
+        await migrator.alterTable(TableMigration(recordedActionEntries));
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

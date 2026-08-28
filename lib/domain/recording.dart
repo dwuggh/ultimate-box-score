@@ -117,7 +117,7 @@ class RecordingReducer {
     String? lastCatchActionId;
     var pointAbandoned = false;
     final stats = <String, PlayerStats>{};
-    final activeById = <String, RecordedAction>{};
+    final actionsById = <String, RecordedAction>{};
 
     String? statKeyFor(String? participantId) {
       if (participantId == null) return null;
@@ -176,11 +176,11 @@ class RecordingReducer {
       stage = RecordingStage.betweenPoints;
     }
 
-    final activeActions = actions.where((action) => !action.voided).toList()
+    final orderedActions = actions.toList()
       ..sort((a, b) => a.sequence.compareTo(b.sequence));
 
-    for (final action in activeActions) {
-      activeById[action.id] = action;
+    for (final action in orderedActions) {
+      actionsById[action.id] = action;
       switch (action.kind) {
         case RecordedActionKind.startPoint:
           currentPointId = action.pointId;
@@ -247,7 +247,7 @@ class RecordingReducer {
           ourScore += 1;
           finishPoint(PossessionMode.defense);
         case RecordedActionKind.confirmGoal:
-          final related = activeById[action.relatedActionId];
+          final related = actionsById[action.relatedActionId];
           addStats(related?.actorParticipantId, assists: 1);
           addStats(action.actorParticipantId, goals: 1);
           ourScore += 1;

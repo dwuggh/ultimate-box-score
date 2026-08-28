@@ -60,7 +60,6 @@ void main() {
     String? actor,
     String? target,
     String? related,
-    bool voided = false,
   }) {
     return RecordedAction(
       id: '$sequence',
@@ -72,7 +71,6 @@ void main() {
       targetParticipantId: target,
       relatedActionId: related,
       createdAt: DateTime(2026),
-      voidedAt: voided ? DateTime(2026, 1, 2) : null,
     );
   }
 
@@ -145,18 +143,11 @@ void main() {
     expect(state.stats['a']?.pointsPlayed, 1);
   });
 
-  test('voiding goal confirmation leaves its pass and holder intact', () {
+  test('state before goal confirmation retains its pass and holder', () {
     final state = replay([
       action(1, RecordedActionKind.startPoint),
       action(2, RecordedActionKind.pickup, actor: 'pa'),
       action(3, RecordedActionKind.completedPass, actor: 'pa', target: 'pb'),
-      action(
-        4,
-        RecordedActionKind.confirmGoal,
-        actor: 'pb',
-        related: '3',
-        voided: true,
-      ),
     ]);
 
     expect(state.ourScore, 0);

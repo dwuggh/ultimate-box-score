@@ -947,20 +947,27 @@ class GameRepository {
   }
 
   Future<void> undoLast(String gameId) async {
-    final game = gameFromRecord(await _gameRecord(gameId));
-    _requireInProgress(game);
-    final last =
-        await (database.select(database.recordedActionEntries)
-              ..where(
-                (row) => row.gameId.equals(gameId) & row.voidedAt.isNull(),
-              )
-              ..orderBy([(row) => OrderingTerm.desc(row.sequence)])
-              ..limit(1))
-            .getSingleOrNull();
-    if (last == null) return;
-    await (database.update(database.recordedActionEntries)
-          ..where((row) => row.id.equals(last.id)))
-        .write(RecordedActionEntriesCompanion(voidedAt: Value(DateTime.now())));
+    await database.transaction(() async {
+      final game = gameFromRecord(await _gameRecord(gameId));
+      _requireInProgress(game);
+      final last =
+          await (database.select(database.recordedActionEntries)
+                ..where((row) => row.gameId.equals(gameId))
+                ..orderBy([(row) => OrderingTerm.desc(row.sequence)])
+                ..limit(1))
+              .getSingleOrNull();
+      if (last == null) return;
+
+      await (database.delete(
+        database.recordedActionEntries,
+      )..where((row) => row.id.equals(last.id))).go();
+      if (last.kind == RecordedActionKind.startPoint.name &&
+          last.pointId != null) {
+        await (database.delete(
+          database.pointEntries,
+        )..where((row) => row.id.equals(last.pointId!))).go();
+      }
+    });
   }
 
   Future<void> completeGame(String gameId) async {
@@ -998,18 +1005,14 @@ class GameRepository {
       }
       final last =
           await (database.select(database.recordedActionEntries)
-                ..where(
-                  (row) => row.gameId.equals(gameId) & row.voidedAt.isNull(),
-                )
+                ..where((row) => row.gameId.equals(gameId))
                 ..orderBy([(row) => OrderingTerm.desc(row.sequence)])
                 ..limit(1))
               .getSingleOrNull();
       if (last?.kind == RecordedActionKind.abandonPoint.name) {
-        await (database.update(
+        await (database.delete(
           database.recordedActionEntries,
-        )..where((row) => row.id.equals(last!.id))).write(
-          RecordedActionEntriesCompanion(voidedAt: Value(DateTime.now())),
-        );
+        )..where((row) => row.id.equals(last!.id))).go();
       }
       await _writeStatus(gameId, GameStatus.inProgress);
       await selectGame(gameId);
@@ -1289,6 +1292,5 @@ class GameRepository {
         targetParticipantId: record.targetParticipantId,
         relatedActionId: record.relatedActionId,
         createdAt: record.createdAt,
-        voidedAt: record.voidedAt,
       );
 }

@@ -89,6 +89,7 @@ void main() {
       final data = jsonDecode(
         utf8.decode(archive.findFile('data.json')!.readBytes()!),
       ) as Map<String, dynamic>;
+      expect((data['manifest'] as Map<String, dynamic>)['formatVersion'], 2);
       final actions = (data['actions'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
       final goal = actions.singleWhere(
@@ -96,8 +97,31 @@ void main() {
       );
       expect(goal['actorParticipantId'], passer.id);
       expect(goal['targetParticipantId'], receiver.id);
+      expect(goal, isNot(contains('voidedAt')));
       expect(data['pointParticipants'], isNotEmpty);
       expect(data['gamePlayerStats'], isNotEmpty);
+
+      final actionHeader = utf8
+          .decode(archive.findFile('actions.csv')!.readBytes()!)
+          .split('\n')
+          .first;
+      expect(actionHeader, isNot(contains('voided_at')));
+
+      await games.undoLast(gameId);
+      final afterUndo = await exports.build(ExportScope.game(gameId));
+      final afterUndoArchive = ZipDecoder().decodeBytes(
+        afterUndo.bytes,
+        verify: true,
+      );
+      final afterUndoData = jsonDecode(
+        utf8.decode(afterUndoArchive.findFile('data.json')!.readBytes()!),
+      ) as Map<String, dynamic>;
+      final remainingActions = (afterUndoData['actions'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      expect(
+        remainingActions.map((action) => action['kind']),
+        isNot(contains(RecordedActionKind.goalCatch.name)),
+      );
     },
   );
 }
