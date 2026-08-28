@@ -82,6 +82,39 @@ jobs:
           retention-days: 30
           compression-level: 0
 
+  ios:
+    name: iOS release app (unsigned)
+    needs: validate
+    runs-on: macos-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS app without code signing
+        run: flutter build ios --release --no-codesign
+
+      - name: Package iOS app
+        run: ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app ultimate-box-score-ios-unsigned.zip
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ultimate-box-score-ios-unsigned
+          path: ultimate-box-score-ios-unsigned.zip
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
   linux:
     name: Linux release bundle
     needs: validate
