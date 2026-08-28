@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -224,6 +226,42 @@ void main() {
     );
     expect(bundle.lines.single.name, 'O Line');
     expect(bundle.lines.single.memberPlayerIds, [fixture.a, fixture.b]);
+  });
+
+  test('game bundle watcher stays live after event bundle watcher', () async {
+    final fixture = await createFixture();
+    final eventBundles = StreamIterator(
+      events.watchEventBundle(fixture.eventId),
+    );
+    expect(await eventBundles.moveNext(), isTrue);
+
+    final gameBundles = StreamIterator(games.watchGameBundle(fixture.gameId));
+    try {
+      expect(await gameBundles.moveNext(), isTrue);
+      final (participantA, _) = await startPoint(
+        fixture.gameId,
+        fixture.a,
+        fixture.b,
+      );
+      expect(
+        await gameBundles.moveNext().timeout(const Duration(seconds: 1)),
+        isTrue,
+      );
+      expect(gameBundles.current.state.stage, RecordingStage.awaitingPickup);
+
+      await games.recordPickup(fixture.gameId, participantA);
+
+      expect(
+        await gameBundles.moveNext().timeout(const Duration(seconds: 1)),
+        isTrue,
+      );
+      expect(gameBundles.current.state.stage, RecordingStage.offense);
+      expect(gameBundles.current.state.holderParticipantId, participantA);
+      expect(gameBundles.current.actions.last.kind, RecordedActionKind.pickup);
+    } finally {
+      await gameBundles.cancel();
+      await eventBundles.cancel();
+    }
   });
 
   test(

@@ -269,7 +269,8 @@ class EventRepository {
   Stream<EventBundle> watchEventBundle(String eventId) {
     return database
         .customSelect(
-          'SELECT 1',
+          'SELECT id FROM competition_event_entries WHERE id = ?',
+          variables: [Variable<String>(eventId)],
           readsFrom: {
             database.competitionEventEntries,
             database.teamEntries,
@@ -619,7 +620,8 @@ class GameRepository {
   Stream<GameBundle> watchGameBundle(String gameId) {
     return database
         .customSelect(
-          'SELECT 1',
+          'SELECT id FROM game_entries WHERE id = ?',
+          variables: [Variable<String>(gameId)],
           readsFrom: {
             database.gameEntries,
             database.gameRosterEntries,
@@ -638,8 +640,10 @@ class GameRepository {
   Stream<Map<String, PlayerStats>> watchTeamStats(String teamId) {
     return database
         .customSelect(
-          'SELECT 1',
+          'SELECT id FROM team_entries WHERE id = ?',
+          variables: [Variable<String>(teamId)],
           readsFrom: {
+            database.teamEntries,
             database.gameEntries,
             database.gameRosterEntries,
             database.pointEntries,
