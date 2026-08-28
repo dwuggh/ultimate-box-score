@@ -187,7 +187,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get assists => '助攻';
 
   @override
-  String get defensiveBlocks => 'D';
+  String get defensiveBlocks => '断盘';
 
   @override
   String get turnovers => '失误';
@@ -268,7 +268,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get eventsAndGames => '活动与比赛';
 
   @override
-  String get noEvents => '还没有活动。先创建活动，再配置阵容、阵线和比赛。';
+  String get noEvents => '还没有活动。先创建活动，再配置阵容、出阵和比赛。';
 
   @override
   String get unknownTeam => '未知队伍';
@@ -298,10 +298,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get eventRosterEmpty => '活动阵容为空。';
 
   @override
-  String get quickLines => '快捷阵线';
+  String get quickLines => '快捷出阵';
 
   @override
-  String get noQuickLines => '还没有快捷阵线。';
+  String get noQuickLines => '还没有快捷出阵。';
 
   @override
   String get deleteGame => '删除比赛';
@@ -325,10 +325,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openingDefense => '首分防守';
 
   @override
-  String get softCapMinutes => '软封顶（分钟）';
+  String get softCapMinutes => '软帽子（分钟）';
 
   @override
-  String get totalCapMinutes => '总封顶（分钟）';
+  String get totalCapMinutes => '硬帽子（分钟）';
 
   @override
   String get targetScore => '目标分';
@@ -383,13 +383,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get removeFromEventRoster => '移出活动阵容';
 
   @override
-  String get removeFromEventRosterMessage => '移出的球员也会从所有快捷阵线中删除；已经开始的比赛快照不受影响。';
+  String get removeFromEventRosterMessage => '移出的球员也会从所有快捷出阵中删除；已经开始的比赛不受影响。';
 
   @override
-  String get addQuickLine => '添加快捷阵线';
+  String get addQuickLine => '添加快捷出阵';
 
   @override
-  String get editQuickLine => '编辑快捷阵线';
+  String get editQuickLine => '编辑快捷出阵';
 
   @override
   String get lineName => '名称';
@@ -401,7 +401,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get eventRoster => '赛前阵容';
 
   @override
-  String get noConfiguredLines => '未设置快捷阵线。';
+  String get noConfiguredLines => '未设置快捷出阵。';
 
   @override
   String get editGameSettings => '编辑比赛设置';
@@ -416,10 +416,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pointEvents => '逐分事件';
 
   @override
-  String get softCapReached => '已到软封顶时间';
+  String get softCapReached => '已到软帽子时间';
 
   @override
-  String get totalCapReached => '已到总封顶时间';
+  String get totalCapReached => '已到硬帽子时间';
 
   @override
   String get acknowledge => '知道了';
