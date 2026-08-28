@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'domain/models.dart';
 import 'l10n/app_localizations.dart';
+import 'providers.dart';
 import 'ui/game_screens.dart';
 import 'ui/home_screen.dart';
 import 'ui/recording_screen.dart';
+import 'ui/settings_screen.dart';
 import 'ui/team_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -66,6 +69,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -78,9 +89,17 @@ class UltimateBoxScoreApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final language =
+        ref.watch(appLanguagePreferenceProvider).valueOrNull ??
+        AppLanguagePreference.system;
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       debugShowCheckedModeBanner: false,
+      locale: switch (language) {
+        AppLanguagePreference.system => null,
+        AppLanguagePreference.english => const Locale('en'),
+        AppLanguagePreference.simplifiedChinese => const Locale('zh'),
+      },
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: ThemeData(

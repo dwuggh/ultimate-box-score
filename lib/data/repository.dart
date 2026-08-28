@@ -49,6 +49,45 @@ class GameDraftRequest {
   final GenderRatio? firstRatio;
 }
 
+class SettingsRepository {
+  SettingsRepository(this.database);
+
+  static const _preferredLocaleKey = 'preferredLocale';
+
+  final AppDatabase database;
+
+  Stream<AppLanguagePreference> watchLanguagePreference() {
+    return (database.select(database.appSettingEntries)
+          ..where((row) => row.key.equals(_preferredLocaleKey)))
+        .watchSingleOrNull()
+        .map((row) => _languagePreference(row?.value));
+  }
+
+  Future<void> setLanguagePreference(AppLanguagePreference preference) async {
+    final locale = switch (preference) {
+      AppLanguagePreference.system => null,
+      AppLanguagePreference.english => 'en',
+      AppLanguagePreference.simplifiedChinese => 'zh',
+    };
+    await database
+        .into(database.appSettingEntries)
+        .insertOnConflictUpdate(
+          AppSettingEntriesCompanion.insert(
+            key: _preferredLocaleKey,
+            value: Value(locale),
+          ),
+        );
+  }
+
+  static AppLanguagePreference _languagePreference(String? locale) {
+    return switch (locale) {
+      'en' => AppLanguagePreference.english,
+      'zh' => AppLanguagePreference.simplifiedChinese,
+      _ => AppLanguagePreference.system,
+    };
+  }
+}
+
 class TeamRepository {
   TeamRepository(this.database);
 

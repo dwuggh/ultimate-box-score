@@ -128,6 +128,36 @@ abstract class AppLocalizations {
   /// **'Stats'**
   String get stats;
 
+  /// No description provided for @settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settings;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @followSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get followSystem;
+
+  /// No description provided for @languageEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get languageEnglish;
+
+  /// No description provided for @languageSimplifiedChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'简体中文'**
+  String get languageSimplifiedChinese;
+
   /// No description provided for @addTeam.
   ///
   /// In en, this message translates to:

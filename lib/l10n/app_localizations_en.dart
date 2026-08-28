@@ -25,6 +25,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stats => 'Stats';
 
   @override
+  String get settings => 'Settings';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get followSystem => 'System default';
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get languageSimplifiedChinese => '简体中文';
+
+  @override
   String get addTeam => 'Add team';
 
   @override

@@ -5,13 +5,14 @@ defines the implemented architecture and the clarified product rules.
 
 ## Product structure
 
-The application has three persistent bottom-navigation branches on Android and
+The application has four persistent bottom-navigation branches on Android and
 Linux:
 
 - **Team** manages teams and rosters and shows totals from completed games.
 - **Games** manages events, event rosters, line presets, and games.
 - **Stats** owns pre-game setup, live recording, completed-game statistics, and
   the point-by-point action timeline.
+- **Settings** owns application-wide preferences, initially language selection.
 
 Each navigation branch keeps its own stack and state. The selected Stats game is
 stored locally so it survives an application restart.
@@ -57,9 +58,9 @@ goals therefore retain an explicit passer-to-receiver relationship. Opponent
 actions remain anonymous in single-team mode.
 
 Score, possession, current holder, timelines, and statistics are derived by
-replaying non-voided actions. Undo marks only the latest active action void and
-retains it for audit and export; counters are never an independent source of
-truth.
+replaying recorded actions. Undo permanently deletes only the latest action, so
+the system returns to the preceding state; counters are never an independent
+source of truth.
 
 The recording UI never moves the holder out of the ordered player list. The
 holder row shows throwaway and goal confirmation. A goal immediately after
@@ -72,14 +73,16 @@ rows show D, while opponent throwaway and opponent goal are global actions.
 
 Full-database, team, event, and game exports produce one ZIP containing a
 versioned lossless JSON document and relational UTF-8 CSV files. Exports include
-snapshots, point participants, raw and voided actions, timestamps, explicit pass
+snapshots, point participants, raw actions, timestamps, explicit pass
 endpoints, score summaries, and derived player statistics. Android uses the
 system share sheet; Linux uses a native save dialog. Import is intentionally out
 of scope.
 
 ## Compatibility
 
-This redesign intentionally has no database compatibility guarantee. Opening an
-older schema recreates the local database. The application remains offline and
-single-team focused. All user-facing text is available in English and Simplified
-Chinese, selected from the device locale, with English as the fallback.
+Schema versions 2 and 3 migrate in place; schemas older than version 2 retain
+the existing behavior of recreating the local database. The application remains
+offline and single-team focused. All user-facing text is available in English
+and Simplified Chinese. The saved preference may follow the device locale or
+select either language explicitly, with English as the unsupported-locale
+fallback.

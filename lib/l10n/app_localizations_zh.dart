@@ -25,6 +25,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get stats => '统计';
 
   @override
+  String get settings => '设置';
+
+  @override
+  String get language => '语言';
+
+  @override
+  String get followSystem => '跟随系统';
+
+  @override
+  String get languageEnglish => 'English';
+
+  @override
+  String get languageSimplifiedChinese => '简体中文';
+
+  @override
   String get addTeam => '添加队伍';
 
   @override

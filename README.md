@@ -1,16 +1,18 @@
 # Ultimate Box Score
 
 Offline ultimate frisbee box score recording for Android and Linux desktop in
-English and Simplified Chinese, selected from the device locale.
+English and Simplified Chinese, with a system-default or explicit language
+preference.
 
 ## Features
 
-- Persistent Team, Games, and Stats navigation on Android and Linux.
+- Persistent Team, Games, Stats, and Settings navigation on Android and Linux.
+- A persistent Settings page with an immediate, saved language preference.
 - Event rosters and reusable, unrestricted-size line presets.
 - Team and roster management with historical game snapshots and archiving.
 - Durable single-team recording with stable player order in the live UI.
 - ABBA mixed-ratio prompts, halftime, continuous cap timers, and target score.
-- Actor-to-target action history, audit-preserving undo, crash-safe resume,
+- Actor-to-target action history, destructive undo, crash-safe resume,
   abandoned-point recovery, and reopening.
 - Per-game statistics and completed-game career totals.
 - Full, team, event, and game ZIP exports with lossless JSON and relational CSV.

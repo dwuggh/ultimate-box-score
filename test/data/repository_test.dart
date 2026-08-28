@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultimate_box_score/data/database.dart';
@@ -34,18 +35,52 @@ void main() {
       ')';
 
   late AppDatabase database;
+  late SettingsRepository settings;
   late TeamRepository teams;
   late EventRepository events;
   late GameRepository games;
 
   setUp(() {
     database = AppDatabase(NativeDatabase.memory());
+    settings = SettingsRepository(database);
     teams = TeamRepository(database);
     events = EventRepository(database, teams);
     games = GameRepository(database, events);
   });
 
   tearDown(() => database.close());
+
+  test(
+    'language preference defaults, persists, and handles invalid data',
+    () async {
+      expect(
+        await settings.watchLanguagePreference().first,
+        AppLanguagePreference.system,
+      );
+
+      await settings.setLanguagePreference(
+        AppLanguagePreference.simplifiedChinese,
+      );
+      expect(
+        await settings.watchLanguagePreference().first,
+        AppLanguagePreference.simplifiedChinese,
+      );
+
+      await (database.update(database.appSettingEntries)
+            ..where((row) => row.key.equals('preferredLocale')))
+          .write(const AppSettingEntriesCompanion(value: Value('invalid')));
+      expect(
+        await settings.watchLanguagePreference().first,
+        AppLanguagePreference.system,
+      );
+
+      await settings.setLanguagePreference(AppLanguagePreference.system);
+      expect(
+        await settings.watchLanguagePreference().first,
+        AppLanguagePreference.system,
+      );
+    },
+  );
 
   test('migrates the legacy localized opponent placeholder', () async {
     await database.close();

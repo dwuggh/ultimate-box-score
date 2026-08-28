@@ -11,6 +11,16 @@ final databaseProvider = Provider<AppDatabase>((ref) {
   return database;
 });
 
+final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
+  return SettingsRepository(ref.watch(databaseProvider));
+});
+
+final appLanguagePreferenceProvider = StreamProvider<AppLanguagePreference>((
+  ref,
+) {
+  return ref.watch(settingsRepositoryProvider).watchLanguagePreference();
+});
+
 final teamRepositoryProvider = Provider<TeamRepository>((ref) {
   return TeamRepository(ref.watch(databaseProvider));
 });
