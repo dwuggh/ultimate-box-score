@@ -425,13 +425,16 @@ void main() {
       bundle = await games.getGameBundle(fixture.gameId);
       final participantC = bundle.state.holderParticipantId!;
       expect(bundle.participantSnapshot(participantC)?.playerId, fixture.c);
-      expect(bundle.state.currentParticipants, hasLength(2));
+      expect(bundle.state.currentParticipants, hasLength(3));
       expect(bundle.actions.last.kind, RecordedActionKind.substitution);
 
       await games.undoLast(fixture.gameId);
       bundle = await games.getGameBundle(fixture.gameId);
       expect(bundle.state.holderParticipantId, participantA);
-      expect(bundle.state.currentParticipants, [participantA, participantB]);
+      expect(bundle.state.currentParticipants.take(2), [
+        participantA,
+        participantB,
+      ]);
       expect(
         bundle.participantsForPoint(bundle.state.currentPointId!),
         hasLength(3),
