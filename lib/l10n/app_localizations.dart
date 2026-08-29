@@ -1613,7 +1613,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorIncomingPlayerNotInRoster.
   ///
   /// In en, this message translates to:
-  /// **'The incoming player is not in this game's roster.'**
+  /// **'The incoming player is not in this game\'s roster.'**
   String get errorIncomingPlayerNotInRoster;
 }
 
