@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/database.dart';
 import 'data/export_service.dart';
+import 'data/import_service.dart';
 import 'data/repository.dart';
 import 'domain/models.dart';
 
@@ -44,6 +45,10 @@ final exportServiceProvider = Provider<ExportService>((ref) {
     ref.watch(databaseProvider),
     ref.watch(gameRepositoryProvider),
   );
+});
+
+final importServiceProvider = Provider<ImportService>((ref) {
+  return ImportService(ref.watch(databaseProvider));
 });
 
 final teamsProvider = StreamProvider<List<Team>>((ref) {

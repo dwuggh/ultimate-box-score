@@ -777,6 +777,13 @@ class _ParticipantCard extends ConsumerWidget {
     final state = bundle.state;
     final holder = state.holderParticipantId == participantId;
     final repository = ref.read(gameRepositoryProvider);
+    final activeRosterIds = {
+      for (final activeId in state.currentParticipants)
+        bundle.participant(activeId)?.gameRosterId,
+    };
+    final replacements = bundle.roster
+        .where((player) => !activeRosterIds.contains(player.id))
+        .toList();
     return Card(
       color: holder ? Theme.of(context).colorScheme.primaryContainer : null,
       child: Padding(
@@ -793,6 +800,36 @@ class _ParticipantCard extends ConsumerWidget {
                   ),
                 ),
                 if (holder) Chip(label: Text(strings.holder)),
+                IconButton(
+                  tooltip: strings.substitute,
+                  onPressed: busy || replacements.isEmpty
+                      ? null
+                      : () async {
+                          final incomingRosterId = await showDialog<String>(
+                            context: context,
+                            builder: (context) => SimpleDialog(
+                              title: Text(strings.chooseReplacement),
+                              children: [
+                                for (final player in replacements)
+                                  SimpleDialogOption(
+                                    onPressed: () =>
+                                        Navigator.pop(context, player.id),
+                                    child: Text(playerLabel(strings, player)),
+                                  ),
+                              ],
+                            ),
+                          );
+                          if (incomingRosterId == null) return;
+                          await run(
+                            () => repository.substitutePlayer(
+                              gameId: bundle.game.id,
+                              outgoingParticipantId: participantId,
+                              incomingRosterId: incomingRosterId,
+                            ),
+                          );
+                        },
+                  icon: const Icon(Icons.swap_horiz),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -1039,6 +1076,8 @@ class _TimelinePanel extends StatelessWidget {
                 bundle
                     .participantsForPoint(point.id)
                     .where((item) => !item.unknown)
+                    .map((item) => item.gameRosterId)
+                    .toSet()
                     .length,
               ),
             ),
@@ -1104,6 +1143,10 @@ String _actionLabel(
     RecordedActionKind.defensiveBlock => strings.actionDefensiveBlock(actor),
     RecordedActionKind.opponentThrowaway => strings.opponentThrowaway,
     RecordedActionKind.opponentGoal => strings.opponentGoal,
+    RecordedActionKind.substitution => strings.actionSubstitution(
+      actor,
+      target,
+    ),
     RecordedActionKind.abandonPoint => strings.actionAbandonPoint,
   };
 }

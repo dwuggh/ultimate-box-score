@@ -273,6 +273,8 @@ class ExportService {
         'created_at',
         'started_at',
         'completed_at',
+        'soft_cap_acknowledged',
+        'total_cap_acknowledged',
       ],
       ...gameRows.map(_gameCsv),
     ]);
@@ -519,6 +521,8 @@ class ExportService {
     'createdAt': row.createdAt.toUtc().toIso8601String(),
     'startedAt': row.startedAt?.toUtc().toIso8601String(),
     'completedAt': row.completedAt?.toUtc().toIso8601String(),
+    'softCapAcknowledged': row.softCapAcknowledged,
+    'totalCapAcknowledged': row.totalCapAcknowledged,
   };
 
   static List<Object?> _gameCsv(GameRecord row) => [
@@ -537,6 +541,8 @@ class ExportService {
     row.createdAt.toUtc().toIso8601String(),
     row.startedAt?.toUtc().toIso8601String(),
     row.completedAt?.toUtc().toIso8601String(),
+    row.softCapAcknowledged,
+    row.totalCapAcknowledged,
   ];
 
   static Map<String, Object?> _snapshotJson(GameRosterRecord row) => {

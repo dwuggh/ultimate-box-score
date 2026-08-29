@@ -40,6 +40,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageSimplifiedChinese => '简体中文';
 
   @override
+  String get dataManagement => '数据管理';
+
+  @override
+  String get exportBackup => '导出完整备份';
+
+  @override
+  String get exportBackupDescription => '保存全部队伍、队员、活动、比赛、动作记录和设置。';
+
+  @override
+  String get importBackup => '导入备份';
+
+  @override
+  String get importBackupDescription => '恢复 Ultimate Box Score 的完整 ZIP 备份。';
+
+  @override
+  String get importBackupTitle => '替换全部应用数据？';
+
+  @override
+  String importBackupSummary(
+    String date,
+    int teams,
+    int players,
+    int events,
+    int games,
+    int actions,
+  ) {
+    return '备份时间：$date\n$teams 支队伍 · $players 名队员 · $events 个活动 · $games 场比赛 · $actions 条动作';
+  }
+
+  @override
+  String get importBackupWarning => '此操作将永久替换当前应用中的全部数据。如可能需要当前数据，请先导出备份。';
+
+  @override
+  String get restoreBackup => '恢复备份';
+
+  @override
+  String get backupImported => '备份恢复成功。';
+
+  @override
   String get addTeam => '添加队伍';
 
   @override
@@ -500,6 +539,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defensiveBlock => '防守成功 D';
 
   @override
+  String get substitute => '换人';
+
+  @override
+  String get chooseReplacement => '选择替补队员';
+
+  @override
   String get noEventsRecorded => '还没有事件';
 
   @override
@@ -651,6 +696,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String actionSubstitution(String actor, String target) {
+    return '$actor → $target 换人';
+  }
+
+  @override
   String get actionAbandonPoint => '本分中止';
 
   @override
@@ -762,4 +812,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorTargetMustBePositive => '目标分必须是正整数。';
+
+  @override
+  String get errorInvalidBackup => '该文件不是有效的 Ultimate Box Score 备份。';
+
+  @override
+  String get errorUnsupportedBackup => '当前应用版本不支持此备份格式。';
+
+  @override
+  String get errorBackupMustContainAllData => '只能恢复全应用备份。';
+
+  @override
+  String get errorSubstitutionNotAllowed => '只能在进行中的分内换人。';
+
+  @override
+  String get errorOutgoingPlayerNotActive => '被换下的队员当前不在场上。';
+
+  @override
+  String get errorIncomingPlayerAlreadyActive => '被换上的队员已经在场上。';
+
+  @override
+  String get errorIncomingPlayerNotInRoster => '被换上的队员不在本场比赛名单中。';
 }

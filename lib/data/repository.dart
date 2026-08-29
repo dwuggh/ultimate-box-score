@@ -989,6 +989,60 @@ class GameRepository {
     );
   }
 
+  Future<void> substitutePlayer({
+    required String gameId,
+    required String outgoingParticipantId,
+    required String incomingRosterId,
+  }) async {
+    await database.transaction(() async {
+      final bundle = await getGameBundle(gameId);
+      _requireInProgress(bundle.game);
+      if (!bundle.state.pointInProgress) {
+        throw const AppException(AppErrorCode.substitutionNotAllowed);
+      }
+      final pointId = bundle.state.currentPointId;
+      if (pointId == null) {
+        throw const AppException(AppErrorCode.noActivePoint);
+      }
+      if (!bundle.state.currentParticipants.contains(outgoingParticipantId)) {
+        throw const AppException(AppErrorCode.outgoingPlayerNotActive);
+      }
+      final incoming = bundle.snapshot(incomingRosterId);
+      if (incoming == null) {
+        throw const AppException(AppErrorCode.incomingPlayerNotInRoster);
+      }
+      final activeRosterIds = {
+        for (final participantId in bundle.state.currentParticipants)
+          bundle.participant(participantId)?.gameRosterId,
+      };
+      if (activeRosterIds.contains(incomingRosterId)) {
+        throw const AppException(AppErrorCode.incomingPlayerAlreadyActive);
+      }
+      final outgoing = bundle.participant(outgoingParticipantId);
+      if (outgoing == null || outgoing.pointId != pointId) {
+        throw const AppException(AppErrorCode.outgoingPlayerNotActive);
+      }
+      final incomingParticipantId = newId();
+      await database
+          .into(database.pointParticipantEntries)
+          .insert(
+            PointParticipantEntriesCompanion.insert(
+              id: incomingParticipantId,
+              pointId: pointId,
+              gameRosterId: Value(incomingRosterId),
+              displayOrder: outgoing.displayOrder,
+            ),
+          );
+      await _insertAction(
+        gameId: gameId,
+        pointId: pointId,
+        kind: RecordedActionKind.substitution,
+        actorId: outgoingParticipantId,
+        targetId: incomingParticipantId,
+      );
+    });
+  }
+
   Future<void> undoLast(String gameId) async {
     await database.transaction(() async {
       final game = gameFromRecord(await _gameRecord(gameId));
@@ -1004,6 +1058,12 @@ class GameRepository {
       await (database.delete(
         database.recordedActionEntries,
       )..where((row) => row.id.equals(last.id))).go();
+      if (last.kind == RecordedActionKind.substitution.name &&
+          last.targetParticipantId != null) {
+        await (database.delete(
+          database.pointParticipantEntries,
+        )..where((row) => row.id.equals(last.targetParticipantId!))).go();
+      }
       if (last.kind == RecordedActionKind.startPoint.name &&
           last.pointId != null) {
         await (database.delete(
@@ -1157,10 +1217,7 @@ class GameRepository {
       if (pointId == null) {
         throw const AppException(AppErrorCode.noActivePoint);
       }
-      final participantIds = current
-          .participantsForPoint(pointId)
-          .map((participant) => participant.id)
-          .toSet();
+      final participantIds = current.state.currentParticipants.toSet();
       if (actorId != null && !participantIds.contains(actorId)) {
         throw const AppException(AppErrorCode.actorNotInLineup);
       }

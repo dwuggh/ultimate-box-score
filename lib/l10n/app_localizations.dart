@@ -158,6 +158,73 @@ abstract class AppLocalizations {
   /// **'简体中文'**
   String get languageSimplifiedChinese;
 
+  /// No description provided for @dataManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Data management'**
+  String get dataManagement;
+
+  /// No description provided for @exportBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Export full backup'**
+  String get exportBackup;
+
+  /// No description provided for @exportBackupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Save all teams, players, events, games, actions, and settings.'**
+  String get exportBackupDescription;
+
+  /// No description provided for @importBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Import backup'**
+  String get importBackup;
+
+  /// No description provided for @importBackupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore a full Ultimate Box Score ZIP backup.'**
+  String get importBackupDescription;
+
+  /// No description provided for @importBackupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace all app data?'**
+  String get importBackupTitle;
+
+  /// No description provided for @importBackupSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup from {date}\n{teams} teams · {players} players · {events} events · {games} games · {actions} actions'**
+  String importBackupSummary(
+    String date,
+    int teams,
+    int players,
+    int events,
+    int games,
+    int actions,
+  );
+
+  /// No description provided for @importBackupWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This will permanently replace all current app data. Export your current data first if you may need it.'**
+  String get importBackupWarning;
+
+  /// No description provided for @restoreBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore backup'**
+  String get restoreBackup;
+
+  /// No description provided for @backupImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup restored successfully.'**
+  String get backupImported;
+
   /// No description provided for @addTeam.
   ///
   /// In en, this message translates to:
@@ -1070,6 +1137,18 @@ abstract class AppLocalizations {
   /// **'Defensive block (D)'**
   String get defensiveBlock;
 
+  /// No description provided for @substitute.
+  ///
+  /// In en, this message translates to:
+  /// **'Substitute'**
+  String get substitute;
+
+  /// No description provided for @chooseReplacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose replacement'**
+  String get chooseReplacement;
+
   /// No description provided for @noEventsRecorded.
   ///
   /// In en, this message translates to:
@@ -1266,6 +1345,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{actor} defensive block (D)'**
   String actionDefensiveBlock(String actor);
+
+  /// No description provided for @actionSubstitution.
+  ///
+  /// In en, this message translates to:
+  /// **'{actor} → {target} substitution'**
+  String actionSubstitution(String actor, String target);
 
   /// No description provided for @actionAbandonPoint.
   ///
@@ -1488,6 +1573,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The target score must be a positive integer.'**
   String get errorTargetMustBePositive;
+
+  /// No description provided for @errorInvalidBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is not a valid Ultimate Box Score backup.'**
+  String get errorInvalidBackup;
+
+  /// No description provided for @errorUnsupportedBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup format is not supported by this app version.'**
+  String get errorUnsupportedBackup;
+
+  /// No description provided for @errorBackupMustContainAllData.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a full-app backup can be restored.'**
+  String get errorBackupMustContainAllData;
+
+  /// No description provided for @errorSubstitutionNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Substitution is allowed only during an active point.'**
+  String get errorSubstitutionNotAllowed;
+
+  /// No description provided for @errorOutgoingPlayerNotActive.
+  ///
+  /// In en, this message translates to:
+  /// **'The outgoing player is not currently on the field.'**
+  String get errorOutgoingPlayerNotActive;
+
+  /// No description provided for @errorIncomingPlayerAlreadyActive.
+  ///
+  /// In en, this message translates to:
+  /// **'The incoming player is already on the field.'**
+  String get errorIncomingPlayerAlreadyActive;
+
+  /// No description provided for @errorIncomingPlayerNotInRoster.
+  ///
+  /// In en, this message translates to:
+  /// **'The incoming player is not in this game's roster.'**
+  String get errorIncomingPlayerNotInRoster;
 }
 
 class _AppLocalizationsDelegate

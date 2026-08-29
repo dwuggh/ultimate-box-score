@@ -118,6 +118,17 @@ String errorMessage(AppLocalizations strings, Object error) {
     AppErrorCode.capMustBePositive => strings.errorCapMustBePositive,
     AppErrorCode.softCapAfterTotalCap => strings.errorSoftCapAfterTotalCap,
     AppErrorCode.targetMustBePositive => strings.errorTargetMustBePositive,
+    AppErrorCode.invalidBackup => strings.errorInvalidBackup,
+    AppErrorCode.unsupportedBackup => strings.errorUnsupportedBackup,
+    AppErrorCode.backupMustContainAllData =>
+      strings.errorBackupMustContainAllData,
+    AppErrorCode.substitutionNotAllowed => strings.errorSubstitutionNotAllowed,
+    AppErrorCode.outgoingPlayerNotActive =>
+      strings.errorOutgoingPlayerNotActive,
+    AppErrorCode.incomingPlayerAlreadyActive =>
+      strings.errorIncomingPlayerAlreadyActive,
+    AppErrorCode.incomingPlayerNotInRoster =>
+      strings.errorIncomingPlayerNotInRoster,
   };
 }
 

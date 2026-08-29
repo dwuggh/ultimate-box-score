@@ -113,6 +113,7 @@ class RecordingReducer {
     var halftimeTaken = false;
     String? currentPointId;
     var currentParticipants = <String>[];
+    var pointParticipantsUsed = <String>{};
     String? holderParticipantId;
     String? lastCatchActionId;
     var pointAbandoned = false;
@@ -157,8 +158,11 @@ class RecordingReducer {
     }
 
     void creditLineup() {
-      for (final participantId in currentParticipants) {
+      final creditedPlayers = <String>{};
+      for (final participantId in pointParticipantsUsed) {
         if (participantsById[participantId]?.unknown ?? true) continue;
+        final playerId = statKeyFor(participantId);
+        if (playerId == null || !creditedPlayers.add(playerId)) continue;
         addStats(participantId, pointsPlayed: 1);
       }
     }
@@ -170,6 +174,7 @@ class RecordingReducer {
       currentMode = null;
       currentPointId = null;
       currentParticipants = <String>[];
+      pointParticipantsUsed = <String>{};
       holderParticipantId = null;
       lastCatchActionId = null;
       pointAbandoned = false;
@@ -178,6 +183,12 @@ class RecordingReducer {
 
     final orderedActions = actions.toList()
       ..sort((a, b) => a.sequence.compareTo(b.sequence));
+    final substitutionTargets = {
+      for (final action in orderedActions)
+        if (action.kind == RecordedActionKind.substitution &&
+            action.targetParticipantId != null)
+          action.targetParticipantId!,
+    };
 
     for (final action in orderedActions) {
       actionsById[action.id] = action;
@@ -187,8 +198,9 @@ class RecordingReducer {
           currentParticipants = [
             for (final participant
                 in participantsByPoint[action.pointId] ?? const [])
-              participant.id,
+              if (!substitutionTargets.contains(participant.id)) participant.id,
           ];
+          pointParticipantsUsed = currentParticipants.toSet();
           currentMode = nextPointMode;
           holderParticipantId = null;
           lastCatchActionId = null;
@@ -266,12 +278,26 @@ class RecordingReducer {
         case RecordedActionKind.opponentGoal:
           opponentScore += 1;
           finishPoint(PossessionMode.offense);
+        case RecordedActionKind.substitution:
+          final outgoingId = action.actorParticipantId;
+          final incomingId = action.targetParticipantId;
+          final index = outgoingId == null
+              ? -1
+              : currentParticipants.indexOf(outgoingId);
+          if (index >= 0 && incomingId != null) {
+            currentParticipants[index] = incomingId;
+            pointParticipantsUsed.add(incomingId);
+            if (holderParticipantId == outgoingId) {
+              holderParticipantId = incomingId;
+            }
+          }
         case RecordedActionKind.abandonPoint:
           creditLineup();
           pointAbandoned = true;
           currentMode = null;
           currentPointId = null;
           currentParticipants = <String>[];
+          pointParticipantsUsed = <String>{};
           holderParticipantId = null;
           lastCatchActionId = null;
           stage = RecordingStage.betweenPoints;
