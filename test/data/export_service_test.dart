@@ -1,11 +1,14 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ultimate_box_score/data/database.dart';
 import 'package:ultimate_box_score/data/export_service.dart';
+import 'package:ultimate_box_score/data/import_service.dart';
 import 'package:ultimate_box_score/data/repository.dart';
+import 'package:ultimate_box_score/domain/app_error.dart';
 import 'package:ultimate_box_score/domain/models.dart';
 
 void main() {
@@ -124,4 +127,60 @@ void main() {
       );
     },
   );
+
+  test('full backup restores all data and active recording state', () async {
+    final teamId = await teams.saveTeam(name: '备份队', type: TeamType.single);
+    final playerId = await teams.savePlayer(
+      teamId: teamId,
+      name: '一号',
+      gender: PlayerGender.male,
+      position: PlayerPosition.handler,
+    );
+    final eventId = await events.saveEvent(
+      EventSaveRequest(teamId: teamId, name: '备份活动'),
+    );
+    final gameId = await games.saveDraft(
+      GameDraftRequest(
+        eventId: eventId,
+        opponentName: '备份对手',
+        openingMode: PossessionMode.offense,
+      ),
+    );
+    await games.startGame(gameId);
+    var bundle = await games.getGameBundle(gameId);
+    final rosterPlayer = bundle.roster.singleWhere(
+      (player) => player.playerId == playerId,
+    );
+    await games.startPoint(gameId, [rosterPlayer.id]);
+    bundle = await games.getGameBundle(gameId);
+    final participant = bundle.state.currentParticipants.singleWhere(
+      (id) => !(bundle.participant(id)?.unknown ?? true),
+    );
+    await games.recordPickup(gameId, participant);
+
+    final artifact = await exports.build(const ExportScope.all());
+    final preview = ImportService(database).inspect(artifact.bytes).preview;
+    expect(preview.teamCount, 1);
+    expect(preview.gameCount, 1);
+    expect(preview.actionCount, 2);
+
+    await teams.saveTeam(name: '应被替换', type: TeamType.single);
+    await ImportService(database).restore(artifact.bytes);
+
+    expect((await teams.getPlayers(teamId)).single.name, '一号');
+    expect(await teams.watchTeams().first, hasLength(1));
+    final restored = await games.getGameBundle(gameId);
+    expect(restored.state.stage, RecordingStage.offense);
+    expect(restored.state.holderParticipantId, participant);
+    expect(restored.actions, hasLength(2));
+  });
+
+  test('invalid backup is rejected before existing data changes', () async {
+    final teamId = await teams.saveTeam(name: '保留队', type: TeamType.single);
+    await expectLater(
+      ImportService(database).restore(Uint8List.fromList([1, 2, 3])),
+      throwsA(isA<AppException>()),
+    );
+    expect((await teams.getTeam(teamId))?.name, '保留队');
+  });
 }

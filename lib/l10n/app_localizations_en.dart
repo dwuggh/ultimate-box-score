@@ -40,6 +40,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageSimplifiedChinese => '简体中文';
 
   @override
+  String get dataManagement => 'Data management';
+
+  @override
+  String get exportBackup => 'Export full backup';
+
+  @override
+  String get exportBackupDescription =>
+      'Save all teams, players, events, games, actions, and settings.';
+
+  @override
+  String get importBackup => 'Import backup';
+
+  @override
+  String get importBackupDescription =>
+      'Restore a full Ultimate Box Score ZIP backup.';
+
+  @override
+  String get importBackupTitle => 'Replace all app data?';
+
+  @override
+  String importBackupSummary(
+    String date,
+    int teams,
+    int players,
+    int events,
+    int games,
+    int actions,
+  ) {
+    return 'Backup from $date\n$teams teams · $players players · $events events · $games games · $actions actions';
+  }
+
+  @override
+  String get importBackupWarning =>
+      'This will permanently replace all current app data. Export your current data first if you may need it.';
+
+  @override
+  String get restoreBackup => 'Restore backup';
+
+  @override
+  String get backupImported => 'Backup restored successfully.';
+
+  @override
   String get addTeam => 'Add team';
 
   @override
@@ -507,6 +549,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defensiveBlock => 'Defensive block (D)';
 
   @override
+  String get substitute => 'Substitute';
+
+  @override
+  String get chooseReplacement => 'Choose replacement';
+
+  @override
   String get noEventsRecorded => 'No actions yet';
 
   @override
@@ -658,6 +706,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String actionSubstitution(String actor, String target) {
+    return '$actor → $target substitution';
+  }
+
+  @override
   String get actionAbandonPoint => 'Point abandoned';
 
   @override
@@ -786,4 +839,32 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorTargetMustBePositive =>
       'The target score must be a positive integer.';
+
+  @override
+  String get errorInvalidBackup =>
+      'This file is not a valid Ultimate Box Score backup.';
+
+  @override
+  String get errorUnsupportedBackup =>
+      'This backup format is not supported by this app version.';
+
+  @override
+  String get errorBackupMustContainAllData =>
+      'Only a full-app backup can be restored.';
+
+  @override
+  String get errorSubstitutionNotAllowed =>
+      'Substitution is allowed only during an active point.';
+
+  @override
+  String get errorOutgoingPlayerNotActive =>
+      'The outgoing player is not currently on the field.';
+
+  @override
+  String get errorIncomingPlayerAlreadyActive =>
+      'The incoming player is already on the field.';
+
+  @override
+  String get errorIncomingPlayerNotInRoster =>
+      'The incoming player is not in this game\'s roster.';
 }

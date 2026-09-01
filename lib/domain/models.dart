@@ -31,6 +31,7 @@ enum RecordedActionKind {
   defensiveBlock,
   opponentThrowaway,
   opponentGoal,
+  substitution,
   abandonPoint,
 }
 

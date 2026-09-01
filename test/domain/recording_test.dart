@@ -74,11 +74,15 @@ void main() {
     );
   }
 
-  RecordingState replay(List<RecordedAction> actions) {
+  RecordingState replay(
+    List<RecordedAction> actions, {
+    Iterable<PointParticipant> pointParticipants = participants,
+    Iterable<GamePlayerSnapshot> gameRoster = roster,
+  }) {
     return RecordingReducer.replay(
       game: game,
-      participants: participants,
-      roster: roster,
+      participants: pointParticipants,
+      roster: gameRoster,
       actions: actions,
     );
   }
@@ -170,6 +174,55 @@ void main() {
     expect(state.holderParticipantId, isNull);
     expect(state.stats['a']?.ds, 1);
     expect(state.stats['a']?.touches, 1);
+  });
+
+  test('substitution transfers live state but not recorded stats', () {
+    const replacement = GamePlayerSnapshot(
+      id: 'rc',
+      gameId: 'game',
+      playerId: 'c',
+      name: '丙',
+      gender: PlayerGender.male,
+      position: PlayerPosition.handler,
+      archivedAtStart: false,
+    );
+    const replacementParticipant = PointParticipant(
+      id: 'pc',
+      pointId: 'point',
+      gameRosterId: 'rc',
+      displayOrder: 0,
+      unknown: false,
+    );
+    final duringPoint = replay(
+      [
+        action(1, RecordedActionKind.startPoint),
+        action(2, RecordedActionKind.pickup, actor: 'pa'),
+        action(3, RecordedActionKind.substitution, actor: 'pa', target: 'pc'),
+      ],
+      pointParticipants: [...participants, replacementParticipant],
+      gameRoster: [...roster, replacement],
+    );
+
+    expect(duringPoint.currentParticipants, ['pc', 'pb']);
+    expect(duringPoint.holderParticipantId, 'pc');
+    expect(duringPoint.stats['a']?.touches, 1);
+    expect(duringPoint.stats['c']?.touches ?? 0, 0);
+
+    final completed = replay(
+      [
+        action(1, RecordedActionKind.startPoint),
+        action(2, RecordedActionKind.pickup, actor: 'pa'),
+        action(3, RecordedActionKind.substitution, actor: 'pa', target: 'pc'),
+        action(4, RecordedActionKind.goalCatch, actor: 'pc', target: 'pb'),
+      ],
+      pointParticipants: [...participants, replacementParticipant],
+      gameRoster: [...roster, replacement],
+    );
+    expect(completed.stats['a']?.pointsPlayed, 1);
+    expect(completed.stats['b']?.pointsPlayed, 1);
+    expect(completed.stats['c']?.pointsPlayed, 1);
+    expect(completed.stats['c']?.assists, 1);
+    expect(completed.stats['a']?.assists ?? 0, 0);
   });
 
   test('ABBA ratio does not reset at halftime', () {

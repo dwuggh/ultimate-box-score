@@ -35,6 +35,13 @@ enum AppErrorCode {
   capMustBePositive,
   softCapAfterTotalCap,
   targetMustBePositive,
+  invalidBackup,
+  unsupportedBackup,
+  backupMustContainAllData,
+  substitutionNotAllowed,
+  outgoingPlayerNotActive,
+  incomingPlayerAlreadyActive,
+  incomingPlayerNotInRoster,
 }
 
 final class AppException implements Exception {

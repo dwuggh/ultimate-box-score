@@ -158,7 +158,16 @@ void main() {
     );
   });
 
-  Future<({String teamId, String eventId, String gameId, String a, String b})>
+  Future<
+    ({
+      String teamId,
+      String eventId,
+      String gameId,
+      String a,
+      String b,
+      String c,
+    })
+  >
   createFixture({int? maxPoints}) async {
     final teamId = await teams.saveTeam(name: '飞盘队', type: TeamType.mixed);
     final a = await teams.savePlayer(
@@ -175,6 +184,13 @@ void main() {
       position: PlayerPosition.cutter,
       number: '2',
     );
+    final c = await teams.savePlayer(
+      teamId: teamId,
+      name: '丙',
+      gender: PlayerGender.male,
+      position: PlayerPosition.handler,
+      number: '3',
+    );
     final eventId = await events.saveEvent(
       EventSaveRequest(teamId: teamId, name: '周末联赛'),
     );
@@ -188,7 +204,7 @@ void main() {
       ),
     );
     await games.startGame(gameId);
-    return (teamId: teamId, eventId: eventId, gameId: gameId, a: a, b: b);
+    return (teamId: teamId, eventId: eventId, gameId: gameId, a: a, b: b, c: c);
   }
 
   Future<(String, String)> startPoint(
@@ -385,6 +401,62 @@ void main() {
     bundle = await games.getGameBundle(fixture.gameId);
     expect(bundle.points.single.number, 1);
   });
+
+  test(
+    'one-for-one substitution persists, transfers holder, and undoes',
+    () async {
+      final fixture = await createFixture();
+      final (participantA, participantB) = await startPoint(
+        fixture.gameId,
+        fixture.a,
+        fixture.b,
+      );
+      var bundle = await games.getGameBundle(fixture.gameId);
+      final rosterC = bundle.roster.singleWhere(
+        (player) => player.playerId == fixture.c,
+      );
+      await games.recordPickup(fixture.gameId, participantA);
+      await games.substitutePlayer(
+        gameId: fixture.gameId,
+        outgoingParticipantId: participantA,
+        incomingRosterId: rosterC.id,
+      );
+
+      bundle = await games.getGameBundle(fixture.gameId);
+      final participantC = bundle.state.holderParticipantId!;
+      expect(bundle.participantSnapshot(participantC)?.playerId, fixture.c);
+      expect(bundle.state.currentParticipants, hasLength(3));
+      expect(bundle.actions.last.kind, RecordedActionKind.substitution);
+
+      await games.undoLast(fixture.gameId);
+      bundle = await games.getGameBundle(fixture.gameId);
+      expect(bundle.state.holderParticipantId, participantA);
+      expect(bundle.state.currentParticipants.take(2), [
+        participantA,
+        participantB,
+      ]);
+      expect(
+        bundle.participantsForPoint(bundle.state.currentPointId!),
+        hasLength(3),
+      );
+
+      await games.substitutePlayer(
+        gameId: fixture.gameId,
+        outgoingParticipantId: participantA,
+        incomingRosterId: rosterC.id,
+      );
+      bundle = await games.getGameBundle(fixture.gameId);
+      final activeC = bundle.state.holderParticipantId!;
+      await games.recordGoalCatch(fixture.gameId, participantB);
+      bundle = await games.getGameBundle(fixture.gameId);
+      expect(bundle.state.stats[fixture.a]?.touches, 1);
+      expect(bundle.state.stats[fixture.a]?.pointsPlayed, 1);
+      expect(bundle.state.stats[fixture.b]?.pointsPlayed, 1);
+      expect(bundle.state.stats[fixture.c]?.pointsPlayed, 1);
+      expect(bundle.state.stats[fixture.c]?.assists, 1);
+      expect(activeC, isNot(participantA));
+    },
+  );
 
   test('pickup holder can score and complete a target-score game', () async {
     final fixture = await createFixture(maxPoints: 1);
