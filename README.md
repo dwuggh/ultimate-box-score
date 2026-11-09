@@ -58,6 +58,32 @@ flutter build linux
 
 The relocatable Linux bundle is written under `build/linux/x64/release/bundle/`.
 
+## Releases
+
+Download versioned builds from [GitHub Releases](https://github.com/dwuggh/ultimate-box-score/releases).
+Each release contains an Android APK, an unsigned iOS app ZIP, a Linux x64
+tarball, a Windows x64 ZIP, and `SHA256SUMS`. All four builds are produced by
+GitHub Actions after generated-source checks, analysis, and tests succeed.
+
+The Android APK currently uses debug signing, so later CI builds may require
+uninstalling an earlier build before installation. Export your data first.
+The iOS app requires Apple signing and provisioning before installation.
+
+To publish a release:
+
+1. Set `version: <version>+<build-number>` in `pubspec.yaml` and add release notes
+   in `.github/release-notes/<version>.md`.
+2. Push a `release/<version>` branch or a `v<version>` tag pointing to that commit.
+   Alternatively, manually run **Build artifacts** with **publish_release** enabled.
+3. Actions builds all platforms, checksums the downloads, and publishes the
+   release from that exact commit. A release branch or manual run also creates
+   the `v<version>` tag. Existing published releases are never overwritten.
+
+Release branch/tag versions must match `pubspec.yaml`. Ordinary branch pushes,
+pull requests, and manual runs without **publish_release** only produce CI
+artifacts. A failed release upload remains a draft and can be retried on the
+same commit.
+
 ## Download CI builds
 
 The `Build artifacts` GitHub Actions workflow builds Android, iOS, Linux, and

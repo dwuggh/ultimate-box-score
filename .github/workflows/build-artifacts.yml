@@ -2,6 +2,11 @@ name: Build artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the version in pubspec.yaml as a GitHub release
+        type: boolean
+        default: false
   push:
   pull_request:
 
@@ -9,8 +14,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: build-artifacts-${{ github.ref }}
-  cancel-in-progress: true
+  group: build-artifacts-${{ github.event_name }}-${{ github.ref }}-${{ inputs.publish_release || false }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && !startsWith(github.ref, 'refs/heads/release/') && !inputs.publish_release }}
 
 env:
   FLUTTER_VERSION: 3.47.1
@@ -19,9 +24,32 @@ jobs:
   validate:
     name: Analyze and test
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7
+
+      - name: Check release version
+        id: version
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          match = re.search(r'^version: ((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))\+[1-9]\d*$', Path('pubspec.yaml').read_text(), re.M)
+          if not match:
+              raise SystemExit('Expected a stable version and positive build number in pubspec.yaml')
+          version = match[1]
+          ref = os.environ['GITHUB_REF']
+          for prefix in ('refs/tags/v', 'refs/heads/release/'):
+              if ref.startswith(prefix) and ref.removeprefix(prefix) != version:
+                  raise SystemExit(f'{ref} does not match pubspec.yaml version {version}')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+          PY
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -174,10 +202,58 @@ jobs:
       - name: Build Windows bundle
         run: flutter build windows --release
 
+      - name: Package Windows bundle
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath ultimate-box-score-windows-x64.zip
+
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v7
         with:
           name: ultimate-box-score-windows-x64
-          path: build/windows/x64/runner/Release/
+          path: ultimate-box-score-windows-x64.zip
           if-no-files-found: error
           retention-days: 30
+          compression-level: 0
+
+  release:
+    name: Publish GitHub release
+    needs: [validate, android, ios, linux, windows]
+    if: >-
+      (github.event_name == 'push' &&
+        (startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/heads/release/'))) ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-release-${{ needs.validate.outputs.version }}
+      cancel-in-progress: false
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Download artifacts from this run
+        uses: actions/download-artifact@v7
+        with:
+          pattern: ultimate-box-score-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Prepare release assets and checksums
+        shell: bash
+        run: |
+          mkdir dist
+          cp artifacts/app-release.apk "dist/ultimate-box-score-${VERSION}-android.apk"
+          cp artifacts/ultimate-box-score-ios-unsigned.zip "dist/ultimate-box-score-${VERSION}-ios-unsigned.zip"
+          cp artifacts/ultimate-box-score-linux-x64.tar.gz "dist/ultimate-box-score-${VERSION}-linux-x64.tar.gz"
+          cp artifacts/ultimate-box-score-windows-x64.zip "dist/ultimate-box-score-${VERSION}-windows-x64.zip"
+          cd dist
+          sha256sum ultimate-box-score-* > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Publish release
+        shell: bash
+        run: bash .github/scripts/publish-release.sh
